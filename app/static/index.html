@@ -137,8 +137,9 @@ async function playTurn(t, idx) {
     } else {
       badge.className = "badge red"; badge.innerHTML = "⚠ IMPOSTER DETECTED<small>voice does not match enrolled agent — transaction held</small>";
       decision.innerHTML = `<b class="bad">Transaction HELD.</b> Verbally warn customer, transfer to human fraud desk.`;
-      return;
+      return false;
     }
+    return true;
   } catch (e) {
     row.querySelector(".verdict").className = "verdict a";
     row.querySelector(".verdict").textContent = "retrying…";
@@ -151,8 +152,10 @@ $("startCall").onclick = async () => {
   turns.innerHTML = ""; decision.innerHTML = "";
   badge.className = "badge amber"; badge.innerHTML = "CALL STARTING<small>authenticating…</small>";
   for (let i = 0; i < stage.length; i++) {
-    try { await playTurn(stage[i], i); }
+    let ok = false;
+    try { ok = await playTurn(stage[i], i); }
     catch (e) { decision.innerHTML = `<b style="color:var(--amber)">Retry the turn:</b> ${e.message}`; return; }
+    if (!ok) return; // imposter/failed turn: decision already set (transaction held)
   }
   decision.innerHTML = `<b class="ok">Transaction PROCEEDS.</b> Agent identity proven live on every line (verify + deepfake, both green).`;
 };
