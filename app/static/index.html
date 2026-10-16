@@ -63,7 +63,8 @@
     </div>
     <p class="meter" style="margin-top:14px">Agent calls you to confirm. Each spoken line is checked live:<br>
     <b>voice match</b> against the enrolled agent <b>+</b> <b>deepfake scan</b> on the same audio.</p>
-    <button class="primary" id="startCall">📞 Answer the call</button>
+    <button class="primary" id="startCall">📞 Call 1 · Above limit (genuine agent)</button>
+    <button id="startCall2" style="margin-top:8px;width:100%">🚨 Call 2 · Suspicious (imposter hijack)</button>
   </section>
 
   <section class="panel">
@@ -148,12 +149,15 @@ async function playTurn(t, idx) {
   }
 }
 
-$("startCall").onclick = async () => {
+$("startCall").onclick = () => runFlow([stage[0]]);           // genuine only → ends PROCEEDS
+$("startCall2").onclick = () => runFlow(stage);              // genuine + imposter → ends HELD
+
+async function runFlow(flow) {
   turns.innerHTML = ""; decision.innerHTML = "";
   badge.className = "badge amber"; badge.innerHTML = "CALL STARTING<small>authenticating…</small>";
-  for (let i = 0; i < stage.length; i++) {
+  for (let i = 0; i < flow.length; i++) {
     let ok = false;
-    try { ok = await playTurn(stage[i], i); }
+    try { ok = await playTurn(flow[i], i); }
     catch (e) { decision.innerHTML = `<b style="color:var(--amber)">Retry the turn:</b> ${e.message}`; return; }
     if (!ok) return; // imposter/failed turn: decision already set (transaction held)
   }
