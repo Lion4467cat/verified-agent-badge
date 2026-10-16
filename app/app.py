@@ -127,6 +127,9 @@ async def verify(
     return JSONResponse(status_code=r.status_code, content=r.json())
 
 
-# Static page + local audio assets (agent lines, attacker clones)
+# Static page + local audio assets (agent lines, attacker clones).
+# mkdir first: git does not track empty dirs, so a fresh clone may lack them.
+for _d in (BASE_DIR / "app" / "audio", BASE_DIR / "app" / "static"):
+    _d.mkdir(parents=True, exist_ok=True)
 app.mount("/audio", StaticFiles(directory=str(BASE_DIR / "app" / "audio")), name="audio")
 app.mount("/", StaticFiles(directory=str(BASE_DIR / "app" / "static"), html=True), name="static")
