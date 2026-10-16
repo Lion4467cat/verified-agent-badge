@@ -42,6 +42,17 @@
   .decision b { font-size:15px; }
   .ok { color:var(--green); } .bad { color:var(--red); }
   footer { padding:14px 28px; color:#5f729a; font-size:12px; border-top:1px solid var(--line); }
+  .viz { margin-top:10px; display:flex; flex-direction:column; gap:7px; font-size:11px; color:var(--mut); }
+  .vizrow { display:flex; align-items:center; gap:8px; }
+  .vizrow > span { width:86px; flex:none; }
+  .vizrow .track { position:relative; flex:1; height:9px; background:#0d1523; border:1px solid var(--line); border-radius:6px; overflow:visible; }
+  .vizrow .fill { height:100%; border-radius:6px; }
+  .fill.g { background:var(--green); } .fill.r { background:var(--red); }
+  .vizrow .thr { position:absolute; top:-3px; bottom:-3px; width:2px; background:#e8eefc; }
+  .vizrow b.g { color:var(--green); } .vizrow b.r { color:var(--red); }
+  .segs { display:flex; height:16px; border-radius:4px; overflow:hidden; gap:1px; border:1px solid var(--line); }
+  .segs span { display:block; min-width:2px; }
+  .caption { font-size:10px; color:#5f729a; }
 </style>
 </head>
 <body>
@@ -116,6 +127,26 @@ function fmtResult(res) {
   return { match, sim, det };
 }
 
+function vizHTML(res) {
+  const r = res.result || {}, df = res.deepfake || {};
+  const st = r.threshold ?? 0.53, sim = r.similarity ?? 0;
+  const dt = df.threshold ?? 0.62, ds = df.score ?? 0;
+  const dur = df.duration_seconds || r.duration_seconds || 0;
+  const pct = (v, lo, hi) => Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100));
+  const simOk = sim >= st, dsOk = ds < dt;
+  const segs = (df.segments || []).map(s => {
+    const fake = s.score >= dt;
+    const w = dur ? (s.end - s.start) / dur * 100 : 10;
+    return `<span title="${s.start.toFixed(1)}–${s.end.toFixed(1)}s · score ${s.score.toFixed(3)}" style="flex:${w};background:${fake ? '#ef4b5d' : '#19c37d'};opacity:${fake ? 0.95 : 0.45}"></span>`;
+  }).join('');
+  return `<div class="viz">
+    <div class="vizrow"><span>voice similarity</span><div class="track"><div class="fill ${simOk ? 'g' : 'r'}" style="width:${pct(sim, -1, 1)}%"></div><i class="thr" style="left:${pct(st, -1, 1)}%"></i></div><b class="${simOk ? 'g' : 'r'}">${sim.toFixed(3)} <span style="color:#5f729a">| thr ${st}</span></b></div>
+    <div class="vizrow"><span>AI-gen score</span><div class="track"><div class="fill ${dsOk ? 'g' : 'r'}" style="width:${pct(ds, 0, 1)}%"></div><i class="thr" style="left:${pct(dt, 0, 1)}%"></i></div><b class="${dsOk ? 'g' : 'r'}">${ds.toFixed(3)} <span style="color:#5f729a">| thr ${dt}</span></b></div>
+    <div class="segs">${segs || '<span style="background:#1a2b4a"></span>'}</div>
+    <div class="caption">synthetic-segment flags (red = AI-generated per 4 s window) · threshold ${dt}</div>
+  </div>`;
+}
+
 async function playTurn(t, idx) {
   const row = document.createElement("div");
   row.className = "turn";
@@ -133,6 +164,7 @@ async function playTurn(t, idx) {
     row.querySelector(".verdict").className = "verdict " + (genuine ? "g" : "r");
     row.querySelector(".verdict").textContent = genuine ? "✓ agent verified" : "✗ voice mismatch / synthetic";
     meter.innerHTML = `<b>${t.who}</b> → similarity <b>${sim}</b>, decision <b>${match}</b>, deepfake <b>${detFlag ?? "n/a"}</b>`;
+    row.insertAdjacentHTML("beforeend", vizHTML(res));
     if (genuine) {
       badge.className = "badge green"; badge.innerHTML = "✓ VERIFIED AGENT<small>voice matches enrolled bank agent · live deepfake scan clean</small>";
     } else {

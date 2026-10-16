@@ -1,0 +1,23 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>UNCLONE keep-awake (leave open)</title>
+<style>body{font-family:system-ui;background:#0b1220;color:#e8eefc;padding:40px;text-align:center}
+#log{font-size:13px;color:#8fa3c8;white-space:pre-line;margin-top:20px;text-align:left;display:inline-block}
+.ok{color:#19c37d}</style></head>
+<body>
+<h2>Keep-alive ping → unclone-verified-agent.onrender.com</h2>
+<p>Leave this tab open until tomorrow. Pings every 7 minutes so Render free never sleeps.</p>
+<div id="log">starting…</div>
+<script>
+const HOST = location.origin.includes("onrender") ? location.origin : "https://unclone-verified-agent.onrender.com";
+const log = document.getElementById("log");
+let n = 0;
+function ping() {
+  n++;
+  const img = new Image();            // plain GET, no CORS issues
+  img.src = HOST + "/api/status?keepalive=" + n + "&t=" + Date.now();
+  log.innerHTML = "pings sent: " + n + "\nlast: " + new Date().toLocaleTimeString() + " <span class='ok'>✓</span>\nnext: in 7 minutes";
+}
+ping();
+setInterval(ping, 7 * 60 * 1000);
+</script>
+</body></html>
