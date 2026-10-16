@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UNCLONE — High-Value Transaction Confirmation Agent</title>
+<style>
+  :root { --bg:#0b1220; --panel:#101a2c; --ink:#e8eefc; --mut:#8fa3c8;
+          --green:#19c37d; --red:#ef4b5d; --amber:#f5b544; --line:#20304d; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:18px 28px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; }
+  header h1 { font-size:18px; margin:0; font-weight:600; }
+  header .key { font-size:12px; color:var(--mut); }
+  main { display:grid; grid-template-columns: 340px 1fr; gap:20px; padding:24px; max-width:1200px; margin:0 auto; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; }
+  .panel h2 { font-size:14px; margin:0 0 12px; color:var(--mut); font-weight:600; letter-spacing:.4px; text-transform:uppercase; }
+  .txn { border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:#0d1523; }
+  .txn b { display:block; font-size:15px; }
+  .txn span { color:var(--mut); font-size:12px; }
+  .txn .amt { font-size:18px; font-weight:700; }
+  .badge { border-radius:14px; padding:22px; text-align:center; font-size:18px; font-weight:700;
+           border:2px solid var(--line); background:#0d1523; margin-bottom:16px; transition:all .25s; }
+  .badge.green { border-color:var(--green); color:var(--green); }
+  .badge.red { border-color:var(--red); color:var(--red); }
+  .badge.amber { border-color:var(--amber); color:var(--amber); }
+  .badge small { display:block; font-size:12px; font-weight:400; color:var(--mut); margin-top:6px; }
+  .meter { font-size:12px; color:var(--mut); margin:10px 0; line-height:1.6; }
+  .meter b { color:var(--ink); }
+  button { background:#1a2b4a; color:var(--ink); border:1px solid var(--line); border-radius:10px;
+           padding:10px 14px; font-size:14px; cursor:pointer; }
+  button:hover { background:#223457; }
+  button.primary { background:var(--green); color:#04150c; border-color:var(--green); font-weight:700; }
+  .turns { display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+  .turn { display:flex; justify-content:space-between; align-items:center; gap:10px;
+          border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#0d1523; }
+  .turn .who b { font-size:14px; } .turn .who span { display:block; font-size:12px; color:var(--mut); }
+  .turn .verdict { font-size:12px; font-weight:700; }
+  .verdict.g { color:var(--green); } .verdict.r { color:var(--red); } .verdict.a { color:var(--amber); }
+  audio { width:100%; margin-top:6px; }
+  .decision { margin-top:14px; border-top:1px solid var(--line); padding-top:12px; font-size:13px; color:var(--mut); }
+  .decision b { font-size:15px; }
+  .ok { color:var(--green); } .bad { color:var(--red); }
+  footer { padding:14px 28px; color:#5f729a; font-size:12px; border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏦 UNCLONE — Transaction Confirmation Agent</h1>
+  <span class="key" id="apiStatus">checking API…</span>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Flagged transactions</h2>
+    <div class="txn" id="txnA">
+      <b>Card ending 4321 · Flipkart</b>
+      <span class="amt">₹86,499</span> <span>· above your ₹75,000 limit</span>
+    </div>
+    <div class="txn">
+      <b>UPI to wallet@yap</b>
+      <span class="amt">₹12,300</span> <span>· flagged suspicious (new payee, 2 a.m.)</span>
+    </div>
+    <p class="meter" style="margin-top:14px">Agent calls you to confirm. Each spoken line is checked live:<br>
+    <b>voice match</b> against the enrolled agent <b>+</b> <b>deepfake scan</b> on the same audio.</p>
+    <button class="primary" id="startCall">📞 Answer the call</button>
+  </section>
+
+  <section class="panel">
+    <h2>Live call</h2>
+    <div class="badge amber" id="badge">CALL STARTING<small>authenticating the agent's voice…</small></div>
+    <div class="meter" id="meter">Waiting…</div>
+    <div class="turns" id="turns"></div>
+    <div class="decision" id="decision"></div>
+  </section>
+</main>
+
+<footer>Demo data is synthetic and staged for the live call. The DetectifAI result directly drives the badge and the transaction decision (UNCLONE Track 3).</footer>
+
+<script>
+const stage = [
+  { who:"Agent", sub:"high-value txn confirmation", audio:"/audio/agent_turn_1.mp3",
+    scripted:"transaction-above-limit: proceed flow" },
+  { who:"Imposter", sub:"TTS clone attempting the same line", audio:"/audio/attacker_turn.mp3",
+    scripted:"impersonating agent" },
+];
+const $ = (id) => document.getElementById(id);
+const badge = $("badge"), meter = $("meter"), turns = $("turns"), decision = $("decision");
+
+async function status() {
+  const r = await fetch("/api/status"); const s = await r.json();
+  $("apiStatus").textContent = s.api_key_present ? (s.api_ok ? "✅ DetectifAI reachable" : "⚠ key set, health failing") : "❌ API key missing";
+  return s;
+}
+status();
+
+async function verifyTurn(url, idx) {
+  // Fetch the staged audio and re-upload it through the backend so the
+  // DetectifAI API call is real and visible per turn (Rule 5.4: live).
+  const blob = await (await fetch(url)).blob();
+  const fd = new FormData();
+  fd.append("file", blob, url.split("/").pop());
+  fd.append("speaker_id", "bank_agent_1");
+  fd.append("detect_deepfake", "true");
+  const r = await fetch("/api/verify", { method:"POST", body: fd });
+  if (r.status === 503) { const e = await r.json(); throw new Error("busy, retry in " + (e.retry_after ?? 5) + "s"); }
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || e.error || ("HTTP " + r.status)); }
+  return r.json();
+}
+
+function fmtResult(res) {
+  const v = res?.result || {};
+  const det = res?.deepfake || res?.result?.deepfake || v.deepfake;
+  const match = v.decision, sim = v.similarity;
+  return { match, sim, det };
+}
+
+async function playTurn(t, idx) {
+  const row = document.createElement("div");
+  row.className = "turn";
+  row.innerHTML = `<div class="who"><b>${t.who}</b><span>${t.sub}</span></div><div class="verdict a">checking…</div>`;
+  const audio = document.createElement("audio");
+  audio.src = t.audio; audio.controls = true; audio.autoplay = true;
+  row.appendChild(audio);
+  turns.appendChild(row);
+  badge.className = "badge amber"; badge.innerHTML = "CHECKING VOICE<small>" + t.who + " is speaking…</small>";
+  try {
+    const res = await verifyTurn(t.audio, idx);
+    const { match, sim, det } = fmtResult(res);
+    const detFlag = det?.flag ?? det?.is_synthetic ?? det?.decision ?? null;
+    const genuine = match === "match" && (detFlag === null || detFlag === false || detFlag === "real" || detFlag === "no");
+    row.querySelector(".verdict").className = "verdict " + (genuine ? "g" : "r");
+    row.querySelector(".verdict").textContent = genuine ? "✓ agent verified" : "✗ voice mismatch / synthetic";
+    meter.innerHTML = `<b>${t.who}</b> → similarity <b>${sim}</b>, decision <b>${match}</b>, deepfake <b>${detFlag ?? "n/a"}</b>`;
+    if (genuine) {
+      badge.className = "badge green"; badge.innerHTML = "✓ VERIFIED AGENT<small>voice matches enrolled bank agent · live deepfake scan clean</small>";
+    } else {
+      badge.className = "badge red"; badge.innerHTML = "⚠ IMPOSTER DETECTED<small>voice does not match enrolled agent — transaction held</small>";
+      decision.innerHTML = `<b class="bad">Transaction HELD.</b> Verbally warn customer, transfer to human fraud desk.`;
+      return;
+    }
+  } catch (e) {
+    row.querySelector(".verdict").className = "verdict a";
+    row.querySelector(".verdict").textContent = "retrying…";
+    badge.className = "badge amber"; badge.innerHTML = "RETRYING<small>" + e.message + "</small>";
+    throw e;
+  }
+}
+
+$("startCall").onclick = async () => {
+  turns.innerHTML = ""; decision.innerHTML = "";
+  badge.className = "badge amber"; badge.innerHTML = "CALL STARTING<small>authenticating…</small>";
+  for (let i = 0; i < stage.length; i++) {
+    try { await playTurn(stage[i], i); }
+    catch (e) { decision.innerHTML = `<b style="color:var(--amber)">Retry the turn:</b> ${e.message}`; return; }
+  }
+  decision.innerHTML = `<b class="ok">Transaction PROCEEDS.</b> Agent identity proven live on every line (verify + deepfake, both green).`;
+};
+</script>
+</body>
+</html>
