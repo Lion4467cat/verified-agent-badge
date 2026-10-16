@@ -5,3 +5,4 @@ __pycache__/
 .env
 .detectif_key
 .scratch/
+app/audio/teammate_recording.*
