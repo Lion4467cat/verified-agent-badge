@@ -3,198 +3,492 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UNCLONE — High-Value Transaction Confirmation Agent</title>
+<title>UNCLONE — Verified-Agent Badge</title>
 <style>
   :root { --bg:#0b1220; --panel:#101a2c; --ink:#e8eefc; --mut:#8fa3c8;
-          --green:#19c37d; --red:#ef4b5d; --amber:#f5b544; --line:#20304d; }
+          --green:#19c37d; --red:#ef4b5d; --amber:#f5b544; --blue:#5b9cff;
+          --line:#20304d; }
   * { box-sizing:border-box; }
   body { margin:0; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
-  header { padding:18px 28px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; }
-  header h1 { font-size:18px; margin:0; font-weight:600; }
-  header .key { font-size:12px; color:var(--mut); }
-  main { display:grid; grid-template-columns: 340px 1fr; gap:20px; padding:24px; max-width:1200px; margin:0 auto; }
-  .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; }
-  .panel h2 { font-size:14px; margin:0 0 12px; color:var(--mut); font-weight:600; letter-spacing:.4px; text-transform:uppercase; }
-  .txn { border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:10px; background:#0d1523; }
-  .txn b { display:block; font-size:15px; }
+  header { padding:16px 28px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; font-weight:650; letter-spacing:.2px; }
+  header .sub { font-size:12px; color:var(--mut); }
+  header .status { margin-left:auto; font-size:12px; color:var(--mut); font-variant-numeric:tabular-nums; }
+  header .dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--amber); margin-right:6px; }
+  header .dot.ok { background:var(--green); } header .dot.bad { background:var(--red); }
+  .banner { margin:14px 24px 0; padding:12px 16px; border:1px solid #2a3f66; border-radius:12px;
+            background:linear-gradient(90deg,#111d33,#0e1728); font-size:12.5px; color:#c7d5ef;
+            display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  .banner b { color:#fff; }
+  .banner .tag { background:#17305a; border:1px solid #2f4f80; border-radius:999px; padding:6px 10px; white-space:nowrap; }
+  main { display:grid; grid-template-columns: 360px 1fr; gap:18px; padding:18px 24px 8px; max-width:1320px; margin:0 auto; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .panel + .panel { margin-top:14px; }
+  .panel h2 { font-size:12px; margin:0 0 12px; color:var(--mut); font-weight:650; letter-spacing:.6px; text-transform:uppercase; }
+  .txn { border:1px solid var(--line); border-radius:10px; padding:12px; background:#0d1523; }
+  .txn b { display:block; font-size:14px; }
+  .txn .amt { font-size:22px; font-weight:750; letter-spacing:.2px; }
   .txn span { color:var(--mut); font-size:12px; }
-  .txn .amt { font-size:18px; font-weight:700; }
-  .badge { border-radius:14px; padding:22px; text-align:center; font-size:18px; font-weight:700;
-           border:2px solid var(--line); background:#0d1523; margin-bottom:16px; transition:all .25s; }
-  .badge.green { border-color:var(--green); color:var(--green); }
-  .badge.red { border-color:var(--red); color:var(--red); }
+  button { width:100%; text-align:left; background:#16243c; color:var(--ink); border:1px solid var(--line);
+           border-radius:10px; padding:11px 12px; font-size:13.5px; cursor:pointer; transition:background .15s,border-color .15s; }
+  button:hover { background:#1d3050; border-color:#2c4570; }
+  button + button { margin-top:8px; }
+  button .hint { display:block; font-size:11.5px; color:var(--mut); margin-top:3px; }
+  button.primary { background:#173a2c; border-color:#1f6b4c; }
+  button.primary:hover { background:#1b4635; }
+  button.warn { background:#3a2318; border-color:#6b3d1f; }
+  button.warn:hover { background:#472a1c; }
+  button.ghost { background:#141f33; }
+  .badge { border-radius:14px; padding:20px; text-align:center; font-size:19px; font-weight:750;
+           border:2px solid var(--line); background:#0d1523; margin-bottom:14px; transition:all .2s; }
+  .badge.green { border-color:var(--green); color:var(--green); box-shadow:0 0 0 1px #19c37d22 inset; }
+  .badge.red { border-color:var(--red); color:var(--red); box-shadow:0 0 0 1px #ef4b5d22 inset; }
   .badge.amber { border-color:var(--amber); color:var(--amber); }
-  .badge small { display:block; font-size:12px; font-weight:400; color:var(--mut); margin-top:6px; }
-  .meter { font-size:12px; color:var(--mut); margin:10px 0; line-height:1.6; }
-  .meter b { color:var(--ink); }
-  button { background:#1a2b4a; color:var(--ink); border:1px solid var(--line); border-radius:10px;
-           padding:10px 14px; font-size:14px; cursor:pointer; }
-  button:hover { background:#223457; }
-  button.primary { background:var(--green); color:#04150c; border-color:var(--green); font-weight:700; }
-  .turns { display:flex; flex-direction:column; gap:10px; margin-top:14px; }
-  .turn { display:flex; justify-content:space-between; align-items:center; gap:10px;
-          border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#0d1523; }
-  .turn .who b { font-size:14px; } .turn .who span { display:block; font-size:12px; color:var(--mut); }
-  .turn .verdict { font-size:12px; font-weight:700; }
-  .verdict.g { color:var(--green); } .verdict.r { color:var(--red); } .verdict.a { color:var(--amber); }
-  audio { width:100%; margin-top:6px; }
-  .decision { margin-top:14px; border-top:1px solid var(--line); padding-top:12px; font-size:13px; color:var(--mut); }
-  .decision b { font-size:15px; }
-  .ok { color:var(--green); } .bad { color:var(--red); }
-  footer { padding:14px 28px; color:#5f729a; font-size:12px; border-top:1px solid var(--line); }
-  .viz { margin-top:10px; display:flex; flex-direction:column; gap:7px; font-size:11px; color:var(--mut); }
+  .badge small { display:block; font-size:12px; font-weight:450; color:var(--mut); margin-top:6px; }
+  .callhead { display:flex; align-items:baseline; gap:10px; margin-bottom:10px; }
+  .callhead b { font-size:14px; }
+  .callhead span { font-size:12px; color:var(--mut); margin-left:auto; font-variant-numeric:tabular-nums; }
+  audio { width:100%; margin:8px 0 12px; height:34px; }
+  .timeline { margin:2px 0 16px; }
+  .tl-track { position:relative; height:34px; background:#0d1523; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .tl-block { position:absolute; top:0; bottom:0; border-right:1px solid #0b1220; background:#16243c;
+              display:flex; align-items:center; justify-content:center; font-size:10px; color:#7f93b8; transition:background .25s; }
+  .tl-block.checking { background:#1b2b45; }
+  .tl-block.green { background:#123d2c; color:#8ce7bf; }
+  .tl-block.red { background:#4a1a22; color:#ffb3bc; }
+  .tl-block.amber { background:#4a3814; color:#ffd88a; }
+  .tl-head { position:absolute; top:-4px; bottom:-4px; width:2px; background:#e8eefc; left:0; transition:left .2s linear; }
+  .turns { display:flex; flex-direction:column; gap:10px; }
+  .win { border:1px solid var(--line); border-radius:10px; padding:11px 12px; background:#0d1523; }
+  .win-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .win-head b { font-size:13px; }
+  .win-head .time { font-size:11.5px; color:var(--mut); }
+  .pill { margin-left:auto; font-size:10.5px; font-weight:750; letter-spacing:.5px; padding:3px 8px; border-radius:999px; border:1px solid; }
+  .pill.green { color:var(--green); border-color:#1f6b4c; background:#0f2b20; }
+  .pill.red { color:var(--red); border-color:#7a2b35; background:#2a1216; }
+  .pill.amber { color:var(--amber); border-color:#6b521f; background:#2a2110; }
+  .pill.neutral { color:var(--mut); border-color:var(--line); background:#141f33; }
+  .viz { display:flex; flex-direction:column; gap:6px; font-size:11px; color:var(--mut); margin-top:6px; }
   .vizrow { display:flex; align-items:center; gap:8px; }
-  .vizrow > span { width:86px; flex:none; }
-  .vizrow .track { position:relative; flex:1; height:9px; background:#0d1523; border:1px solid var(--line); border-radius:6px; overflow:visible; }
+  .vizrow > span { width:96px; flex:none; }
+  .vizrow .track { position:relative; flex:1; height:8px; background:#0b1220; border:1px solid var(--line); border-radius:6px; }
   .vizrow .fill { height:100%; border-radius:6px; }
-  .fill.g { background:var(--green); } .fill.r { background:var(--red); }
-  .vizrow .thr { position:absolute; top:-3px; bottom:-3px; width:2px; background:#e8eefc; }
-  .vizrow b.g { color:var(--green); } .vizrow b.r { color:var(--red); }
-  .segs { display:flex; height:16px; border-radius:4px; overflow:hidden; gap:1px; border:1px solid var(--line); }
+  .fill.g { background:var(--green); } .fill.r { background:var(--red); } .fill.a { background:var(--amber); }
+  .vizrow .thr { position:absolute; top:-3px; bottom:-3px; width:2px; background:#e8eefc; opacity:.85; }
+  .vizrow b { font-variant-numeric:tabular-nums; min-width:44px; text-align:right; }
+  .vizrow b.g { color:var(--green); } .vizrow b.r { color:var(--red); } .vizrow b.a { color:var(--amber); }
+  .segs { display:flex; height:14px; border-radius:4px; overflow:hidden; gap:1px; border:1px solid var(--line); margin-top:2px; }
   .segs span { display:block; min-width:2px; }
-  .caption { font-size:10px; color:#5f729a; }
+  .seg-green { background:#19c37d; opacity:.55; } .seg-amber { background:#f5b544; opacity:.85; }
+  .seg-red { background:#ef4b5d; opacity:.95; }
+  .caption { font-size:10px; color:#5f729a; margin-top:4px; }
+  .decision { margin-top:4px; border-top:1px solid var(--line); padding-top:12px; font-size:13px; color:var(--mut); }
+  .decision b { font-size:17px; }
+  .decision .reason { color:#c7d5ef; margin-top:4px; line-height:1.5; }
+  .decision .meta { font-size:11.5px; color:#5f729a; margin-top:6px; }
+  .ok { color:var(--green); } .bad { color:var(--red); } .warnc { color:var(--amber); }
+  .callout { margin-top:12px; border:1px solid #7a2b35; background:#2a1216; border-radius:10px; padding:12px 14px; font-size:12.5px; line-height:1.55; color:#ffd7dc; }
+  .callout b { color:#fff; }
+  .callout .num { font-variant-numeric:tabular-nums; color:#fff; }
+  .policy table { width:100%; border-collapse:collapse; font-size:11.5px; }
+  .policy td { padding:6px 0; border-bottom:1px solid #182742; vertical-align:top; }
+  .policy td:first-child { color:#c7d5ef; padding-right:10px; }
+  .policy td:last-child { text-align:right; white-space:nowrap; }
+  .policy .g { color:var(--green); font-weight:650; } .policy .r { color:var(--red); font-weight:650; } .policy .a { color:var(--amber); font-weight:650; }
+  .hs { margin-top:12px; font-size:12px; color:var(--mut); }
+  .hs .cards { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+  .hs .card { border:1px solid var(--line); border-radius:9px; padding:10px; background:#0d1523; }
+  .hs .card h4 { margin:0 0 6px; font-size:10.5px; letter-spacing:.5px; color:var(--mut); text-transform:uppercase; }
+  .hs .card .v { font-size:12px; color:#e8eefc; overflow-wrap:anywhere; line-height:1.5; }
+  .hs .trust { margin-top:9px; border:1px solid #1f6b4c; background:#0f2b20; color:var(--green); border-radius:9px; padding:10px; text-align:center; font-weight:750; font-size:13px; }
+  .hs .refuse { margin-top:9px; border:1px solid #7a2b35; background:#2a1216; color:var(--red); border-radius:9px; padding:10px; text-align:center; font-size:12px; }
+  details { margin-top:7px; }
+  summary { cursor:pointer; font-size:11px; color:#5f729a; }
+  pre { white-space:pre-wrap; word-break:break-word; font-size:10.5px; color:#9fb2d4; background:#0b1220;
+        border:1px solid var(--line); border-radius:8px; padding:10px; max-height:240px; overflow:auto; margin:6px 0 0; }
+  footer { padding:14px 28px; color:#5f729a; font-size:11.5px; border-top:1px solid var(--line); margin-top:12px; }
+  .muted { color:var(--mut); }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } .hs .cards { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 <header>
-  <h1>🏦 UNCLONE — Transaction Confirmation Agent</h1>
-  <span class="key" id="apiStatus">checking API…</span>
+  <h1>🏦 UNCLONE — Verified-Agent Badge</h1>
+  <span class="sub">user-side agent verifies the bank's agent · every window is a live DetectifAI call</span>
+  <span class="status" id="apiStatus"><i class="dot"></i>checking API…</span>
 </header>
 
+<div class="banner">
+  <b>Day 1 judge asked: where is the training dataset?</b>
+  <span>We don't train a model. We enroll <b>15–60s of the bank's own agent voice</b> against pretrained speaker + deepfake models — no corpus, no cold start.</span>
+  <span class="tag">Day 1 feedback → shipped</span>
+</div>
+
 <main>
-  <section class="panel">
-    <h2>Flagged transactions</h2>
-    <div class="txn" id="txnA">
-      <b>Card ending 4321 · Flipkart</b>
-      <span class="amt">₹86,499</span> <span>· above your ₹75,000 limit</span>
+  <section>
+    <div class="panel">
+      <h2>Flagged transaction</h2>
+      <div class="txn" style="margin-bottom:12px">
+        <b>Card ending 4321 · Flipkart</b>
+        <span class="amt">₹86,499</span>
+        <span>· above your ₹75,000 limit</span>
+      </div>
+      <h2 style="margin-top:4px">Demo calls</h2>
+      <button class="primary" data-run="genuine">📞 Call 1 · Genuine agent
+        <span class="hint">3 live windows · green throughout · transaction proceeds</span></button>
+      <button class="warn" data-run="hijack">🚨 Call 2 · Mid-call hijack
+        <span class="hint">agent voice starts genuine, then swaps to a clone</span></button>
+      <button class="warn" data-run="subtle">🕵️ Call 3 · Subtle hijack
+        <span class="hint">voice match passes; only 3s of synthetic speech gives it away</span></button>
+      <button class="ghost" data-run="silent">🔇 Edge case · Silent line
+        <span class="hint">unverifiable input → fail closed to step-up</span></button>
+      <button class="ghost" id="handshakeBtn" style="margin-top:14px">🤝 Agent-to-agent handshake
+        <span class="hint">bank attestation + server-side challenge-response</span></button>
+      <div class="hs" id="handshakeBox"></div>
     </div>
-    <div class="txn">
-      <b>UPI to wallet@yap</b>
-      <span class="amt">₹12,300</span> <span>· flagged suspicious (new payee, 2 a.m.)</span>
+
+    <div class="panel policy">
+      <h2>Decision policy (server-side)</h2>
+      <table>
+        <tr><td>Any segment ≥ 0.90</td><td class="r">HOLD</td></tr>
+        <tr><td>Voice similarity &lt; 0.53</td><td class="r">HOLD</td></tr>
+        <tr><td>Deepfake verdict <b>fake</b></td><td class="r">HOLD</td></tr>
+        <tr><td>Similarity 0.53–0.75</td><td class="a">STEP UP</td></tr>
+        <tr><td>Not sure / partial / 422 / 5xx</td><td class="a">STEP UP</td></tr>
+        <tr><td>≥ 0.75 + real + no hot segment</td><td class="g">PROCEED</td></tr>
+      </table>
+      <div class="caption" style="margin-top:9px">Auto-approval needs margin above the vendor's 0.53 match threshold. No error path returns <b>proceed</b>.</div>
     </div>
-    <p class="meter" style="margin-top:14px">Agent calls you to confirm. Each spoken line is checked live:<br>
-    <b>voice match</b> against the enrolled agent <b>+</b> <b>deepfake scan</b> on the same audio.</p>
-    <button class="primary" id="startCall">📞 Call 1 · Above limit (genuine agent)</button>
-    <button id="startCall2" style="margin-top:8px;width:100%">🚨 Call 2 · Suspicious (imposter hijack)</button>
   </section>
 
   <section class="panel">
-    <h2>Live call</h2>
-    <div class="badge amber" id="badge">CALL STARTING<small>authenticating the agent's voice…</small></div>
-    <div class="meter" id="meter">Waiting…</div>
-    <div class="turns" id="turns"></div>
+    <div class="callhead"><b id="callTitle">No call in progress</b><span id="winCount"></span></div>
+    <div class="badge amber" id="badge">AWAITING CALL<small>pick a call on the left — the audio is staged, the DetectifAI calls are real</small></div>
+    <audio id="audio" controls preload="auto"></audio>
+    <div class="timeline"><div class="tl-track" id="tlTrack"></div></div>
     <div class="decision" id="decision"></div>
+    <div id="callout"></div>
+    <div class="turns" id="turns"></div>
   </section>
 </main>
 
-<footer>Demo data is synthetic and staged for the live call. The DetectifAI result directly drives the badge and the transaction decision (UNCLONE Track 3).</footer>
+<footer>
+  Staged call audio (team-recorded genuine voice; team-generated TTS clone). Every window is a real
+  DetectifAI <code>POST /v1/speakers/verify</code> with <code>detect_deepfake=true</code>; repeat runs replay
+  idempotently. The DetectifAI result drives every badge and every transaction decision.
+</footer>
 
 <script>
-const stage = [
-  { who:"Agent", sub:"high-value txn confirmation", audio:"/audio/agent_turn_1.mp3",
-    scripted:"transaction-above-limit: proceed flow" },
-  { who:"Imposter", sub:"TTS clone attempting the same line", audio:"/audio/attacker_turn.mp3",
-    scripted:"impersonating agent" },
-];
 const $ = (id) => document.getElementById(id);
-const badge = $("badge"), meter = $("meter"), turns = $("turns"), decision = $("decision");
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
 
-async function status() {
-  const r = await fetch("/api/status"); const s = await r.json();
-  $("apiStatus").textContent = s.api_key_present ? (s.api_ok ? "✅ DetectifAI reachable" : "⚠ key set, health failing") : "❌ API key missing";
-  return s;
-}
-status();
-
-async function verifyTurn(url, idx) {
-  // Fetch the staged audio and re-upload it through the backend so the
-  // DetectifAI API call is real and visible per turn (Rule 5.4: live).
-  const blob = await (await fetch(url)).blob();
-  const fd = new FormData();
-  fd.append("file", blob, url.split("/").pop());
-  fd.append("speaker_id", "bank_agent_1");
-  fd.append("detect_deepfake", "true");
-  const r = await fetch("/api/verify", { method:"POST", body: fd });
-  if (r.status === 503) { const e = await r.json(); throw new Error("busy, retry in " + (e.retry_after ?? 5) + "s"); }
-  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || e.error || ("HTTP " + r.status)); }
-  return r.json();
-}
-
-function fmtResult(res) {
-  const v = res?.result || {};
-  const det = res?.deepfake || res?.result?.deepfake || v.deepfake;
-  const match = v.decision, sim = v.similarity;
-  return { match, sim, det };
-}
-
-function vizHTML(res) {
-  const r = res.result || {}, df = res.deepfake || {};
-  const st = r.threshold ?? 0.53, sim = r.similarity ?? 0;
-  const dt = df.threshold ?? 0.62, ds = df.score ?? 0;
-  const dur = df.duration_seconds || r.duration_seconds || 0;
-  const pct = (v, lo, hi) => Math.max(0, Math.min(100, (v - lo) / (hi - lo) * 100));
-  const simOk = sim >= st, dsOk = ds < dt;
-  const segs = (df.segments || []).map(s => {
-    const fake = s.score >= dt;
-    const w = dur ? (s.end - s.start) / dur * 100 : 10;
-    return `<span title="${s.start.toFixed(1)}–${s.end.toFixed(1)}s · score ${s.score.toFixed(3)}" style="flex:${w};background:${fake ? '#ef4b5d' : '#19c37d'};opacity:${fake ? 0.95 : 0.45}"></span>`;
-  }).join('');
-  return `<div class="viz">
-    <div class="vizrow"><span>voice similarity</span><div class="track"><div class="fill ${simOk ? 'g' : 'r'}" style="width:${pct(sim, -1, 1)}%"></div><i class="thr" style="left:${pct(st, -1, 1)}%"></i></div><b class="${simOk ? 'g' : 'r'}">${sim.toFixed(3)} <span style="color:#5f729a">| thr ${st}</span></b></div>
-    <div class="vizrow"><span>AI-gen score</span><div class="track"><div class="fill ${dsOk ? 'g' : 'r'}" style="width:${pct(ds, 0, 1)}%"></div><i class="thr" style="left:${pct(dt, 0, 1)}%"></i></div><b class="${dsOk ? 'g' : 'r'}">${ds.toFixed(3)} <span style="color:#5f729a">| thr ${dt}</span></b></div>
-    <div class="segs">${segs || '<span style="background:#1a2b4a"></span>'}</div>
-    <div class="caption">synthetic-segment flags (red = AI-generated per 4 s window) · threshold ${dt}</div>
-  </div>`;
-}
-
-async function playTurn(t, idx) {
-  const row = document.createElement("div");
-  row.className = "turn";
-  row.innerHTML = `<div class="who"><b>${t.who}</b><span>${t.sub}</span></div><div class="verdict a">checking…</div>`;
-  const audio = document.createElement("audio");
-  audio.src = t.audio; audio.controls = true; audio.autoplay = true;
-  row.appendChild(audio);
-  turns.appendChild(row);
-  badge.className = "badge amber"; badge.innerHTML = "CHECKING VOICE<small>" + t.who + " is speaking…</small>";
-  try {
-    const res = await verifyTurn(t.audio, idx);
-    const { match, sim, det } = fmtResult(res);
-    const detFlag = det?.flag ?? det?.is_synthetic ?? det?.decision ?? null;
-    const genuine = match === "match" && (detFlag === null || detFlag === false || detFlag === "real" || detFlag === "no");
-    row.querySelector(".verdict").className = "verdict " + (genuine ? "g" : "r");
-    row.querySelector(".verdict").textContent = genuine ? "✓ agent verified" : "✗ voice mismatch / synthetic";
-    meter.innerHTML = `<b>${t.who}</b> → similarity <b>${sim}</b>, decision <b>${match}</b>, deepfake <b>${detFlag ?? "n/a"}</b>`;
-    row.insertAdjacentHTML("beforeend", vizHTML(res));
-    if (genuine) {
-      badge.className = "badge green"; badge.innerHTML = "✓ VERIFIED AGENT<small>voice matches enrolled bank agent · live deepfake scan clean</small>";
-    } else {
-      badge.className = "badge red"; badge.innerHTML = "⚠ IMPOSTER DETECTED<small>voice does not match enrolled agent — transaction held</small>";
-      decision.innerHTML = `<b class="bad">Transaction HELD.</b> Verbally warn customer, transfer to human fraud desk.`;
-      return false;
-    }
-    return true;
-  } catch (e) {
-    row.querySelector(".verdict").className = "verdict a";
-    row.querySelector(".verdict").textContent = "retrying…";
-    badge.className = "badge amber"; badge.innerHTML = "RETRYING<small>" + e.message + "</small>";
-    throw e;
-  }
-}
-
-$("startCall").onclick = () => runFlow([stage[0]]);           // genuine only → ends PROCEEDS
-$("startCall2").onclick = () => runFlow(stage);              // genuine + imposter → ends HELD
-
-async function runFlow(flow) {
-  turns.innerHTML = ""; decision.innerHTML = "";
-  badge.className = "badge amber"; badge.innerHTML = "CALL STARTING<small>authenticating…</small>";
-  for (let i = 0; i < flow.length; i++) {
-    let ok = false;
-    try { ok = await playTurn(flow[i], i); }
-    catch (e) { decision.innerHTML = `<b style="color:var(--amber)">Retry the turn:</b> ${e.message}`; return; }
-    if (!ok) return; // imposter/failed turn: decision already set (transaction held)
-  }
-  decision.innerHTML = `<b class="ok">Transaction PROCEEDS.</b> Agent identity proven live on every line (verify + deepfake, both green).`;
+const SCENARIOS = {
+  genuine: {
+    title: "Call 1 · Genuine agent", kind: "stream", audio: "/audio/call_genuine.mp3", duration: 17.964,
+    windows: [
+      { src: "/audio/chunks/genuine_0.wav", start: 0, end: 6 },
+      { src: "/audio/chunks/genuine_1.mp3", start: 6, end: 12 },
+      { src: "/audio/chunks/genuine_2.mp3", start: 12, end: 17.964 },
+    ],
+  },
+  hijack: {
+    title: "Call 2 · Mid-call hijack", kind: "stream", audio: "/audio/call_hijack.mp3", duration: 18,
+    windows: [
+      { src: "/audio/chunks/genuine_0.wav", start: 0, end: 6 },
+      { src: "/audio/chunks/attacker_0.mp3", start: 6, end: 12 },
+      { src: "/audio/chunks/attacker_1.mp3", start: 12, end: 18 },
+    ],
+  },
+  subtle: {
+    title: "Call 3 · Subtle hijack (batch audit)", kind: "batch", audio: "/audio/call_subtle.wav", duration: 13,
+    windows: [{ src: "/audio/call_subtle.wav", start: 0, end: 13, label: "whole call" }],
+  },
+  silent: {
+    title: "Edge case · Silent line", kind: "batch", audio: "/audio/silence_5s.wav", duration: 5,
+    windows: [{ src: "/audio/silence_5s.wav", start: 0, end: 5, label: "whole call" }],
+  },
 };
+
+const RANK = { proceed: 0, step_up: 1, hold: 2 };
+let runId = 0;
+let worstPolicy = null;
+
+function setBadge(sev, title, sub) {
+  const b = $("badge");
+  b.className = "badge " + sev;
+  b.innerHTML = `${title}<small>${sub}</small>`;
+}
+
+function worse(a, b) {
+  return (RANK[b.action] ?? 2) >= (RANK[a.action] ?? 2) ? b : a;
+}
+
+function badgeFor(p) {
+  if (p.action === "hold") return ["red", "⚠ TRANSACTION HELD", p.reason];
+  if (p.action === "step_up") return ["amber", "◐ STEP UP REQUIRED", p.reason];
+  return ["green", "✓ VERIFIED AGENT", p.reason];
+}
+
+async function refreshStatus() {
+  try {
+    const s = await (await fetch("/api/status")).json();
+    const dot = $("apiStatus").querySelector(".dot");
+    if (!s.api_key_present) {
+      dot.className = "dot bad";
+      $("apiStatus").innerHTML = '<i class="dot bad"></i>API key missing';
+      return;
+    }
+    dot.className = "dot " + (s.api_ok ? "ok" : "bad");
+    const credits = s.credits_available == null ? "credits ?" : `${s.credits_available} credits`;
+    $("apiStatus").innerHTML = `<i class="dot ${s.api_ok ? "ok" : "bad"}"></i>DetectifAI ${s.api_ok ? "reachable" : "unreachable"} · ${credits} · eidos + aletheia`;
+  } catch (e) {
+    $("apiStatus").innerHTML = '<i class="dot bad"></i>status unavailable';
+  }
+}
+
+function buildTimeline(s) {
+  const track = $("tlTrack");
+  track.innerHTML = "";
+  s.windows.forEach((w, i) => {
+    const d = document.createElement("div");
+    d.className = "tl-block";
+    d.id = "tl" + i;
+    d.style.left = (w.start / s.duration * 100) + "%";
+    d.style.width = ((w.end - w.start) / s.duration * 100) + "%";
+    d.textContent = w.label || `${fmt(w.start)}–${fmt(w.end)}`;
+    track.appendChild(d);
+  });
+  const head = document.createElement("div");
+  head.className = "tl-head";
+  head.id = "tlHead";
+  track.appendChild(head);
+}
+
+function markBlock(i, cls) {
+  const el = $("tl" + i);
+  if (el) el.className = "tl-block " + cls;
+}
+
+function reset(s) {
+  runId++;
+  worstPolicy = null;
+  $("turns").innerHTML = "";
+  $("decision").innerHTML = "";
+  $("callout").innerHTML = "";
+  $("winCount").textContent = "";
+  $("callTitle").textContent = s.title;
+  setBadge("amber", "CALL STARTING", "authenticating the agent's voice…");
+  const audio = $("audio");
+  audio.src = s.audio;
+  audio.currentTime = 0;
+  buildTimeline(s);
+  audio.play().catch(() => {});
+}
+
+async function verifyWindow(src, i, my) {
+  if (i >= 0) markBlock(i, "checking");
+  let attempt = 0;
+  while (true) {
+    const blob = await (await fetch(src)).blob();
+    const fd = new FormData();
+    fd.append("file", blob, src.split("/").pop());
+    fd.append("speaker_id", "bank_agent_1");
+    fd.append("detect_deepfake", "true");
+    let res, body;
+    try {
+      res = await fetch("/api/verify", { method: "POST", body: fd });
+      body = await res.json();
+    } catch (e) {
+      body = { error: { code: "network_error" }, policy: { action: "step_up", severity: "amber", reason: "Network error — fail closed.", evidence: {} } };
+    }
+    if ((res && (res.status === 503 || res.status === 429)) && attempt < 2) {
+      const wait = Math.min(8, Number(body.retry_after || 5));
+      if (i >= 0) markBlock(i, "amber");
+      setBadge("amber", "RETRYING", `DetectifAI busy — retry in ${wait}s (no charge on failure)`);
+      await sleep(wait * 1000);
+      attempt++;
+      continue;
+    }
+    if (!body.policy) body.policy = { action: "step_up", severity: "amber", reason: "No policy returned — fail closed.", evidence: {} };
+    return body;
+  }
+}
+
+function bar(label, value, threshold, lowerIsBetter) {
+  const v = typeof value === "number" && isFinite(value) ? value : null;
+  const pct = v === null ? 0 : Math.max(0, Math.min(100, v * 100));
+  const ok = v === null ? false : (lowerIsBetter ? v < threshold : v >= threshold);
+  const cls = ok ? "g" : "r";
+  return `<div class="vizrow"><span>${label}</span><div class="track"><div class="fill ${cls}" style="width:${pct}%"></div><i class="thr" style="left:${threshold * 100}%"></i></div><b class="${cls}">${v === null ? "—" : v.toFixed(3)}</b></div>`;
+}
+
+function segStrip(segments) {
+  if (!segments || !segments.length) return '<div class="segs"><span style="flex:1;background:#1a2b4a"></span></div>';
+  const maxEnd = Math.max(...segments.map((s) => s.end || 0), 1);
+  return `<div class="segs">${segments.map((s) => {
+    const w = Math.max(0.5, (s.end - s.start) / maxEnd * 100);
+    const cls = s.score >= 0.90 ? "seg-red" : s.score >= 0.62 ? "seg-amber" : "seg-green";
+    return `<span class="${cls}" style="flex:${w}" title="${s.start.toFixed(1)}–${s.end.toFixed(1)}s · ${s.score.toFixed(4)}"></span>`;
+  }).join("")}</div>`;
+}
+
+function renderWindow(i, w, res) {
+  const p = res.policy, ev = p.evidence || {};
+  const sev = p.severity || "amber";
+  markBlock(i, sev);
+  const label = w.label || `${fmt(w.start)}–${fmt(w.end)}`;
+  const pill = p.action === "hold" ? "red" : p.action === "step_up" ? "amber" : "green";
+  const card = document.createElement("div");
+  card.className = "win";
+  card.innerHTML = `
+    <div class="win-head"><b>${label}</b><span class="time">DetectifAI window</span><span class="pill ${pill}">${p.action.replace("_", " ").toUpperCase()}</span></div>
+    <div class="viz">
+      ${bar("voice similarity", ev.similarity, ev.similarity_threshold ?? 0.53, false)}
+      ${bar("AI-gen score", ev.deepfake_score, ev.deepfake_threshold ?? 0.62, true)}
+      ${ev.max_segment != null ? bar("worst segment", ev.max_segment, 0.90, true) : ""}
+      ${segStrip(res.deepfake && res.deepfake.segments)}
+      <div class="caption">segment strip: ${res.deepfake && res.deepfake.segments ? res.deepfake.segments.length : 0} scored windows (4s @ 2s stride) · red ≥ 0.62 · decisive ≥ 0.90</div>
+    </div>
+    <div class="decision" style="border-top:none;padding-top:8px;font-size:12px">
+      <span class="reason">${p.reason}</span>
+    </div>
+    <details><summary>DetectifAI response (raw)</summary><pre>${JSON.stringify(res, null, 2)}</pre></details>`;
+  $("turns").appendChild(card);
+
+  worstPolicy = worstPolicy ? worse(worstPolicy, p) : p;
+  const [sevClass, title, sub] = badgeFor(worstPolicy);
+  setBadge(sevClass, title, sub);
+  if (worstPolicy.action !== "proceed") renderDecision(worstPolicy, true);
+}
+
+function renderDecision(p, interim) {
+  const ev = p.evidence || {};
+  const cls = p.action === "hold" ? "bad" : p.action === "step_up" ? "warnc" : "ok";
+  const title = p.action === "hold" ? "Transaction HELD." : p.action === "step_up" ? "Step up to in-app confirmation." : "Transaction PROCEEDS.";
+  $("decision").innerHTML = `
+    <b class="${cls}">${title}</b>
+    <div class="reason">${p.reason}</div>
+    <div class="meta">${p.action === "hold" ? "The call is blocked before the transaction step." : p.action === "step_up" ? "Never auto-approved: the customer confirms in the banking app." : "Identity proven and speech proven real on every window."}${interim ? " Decision is locked — later windows cannot un-hold it." : ""}</div>`;
+}
+
+function renderSubtleCallout(res) {
+  const ev = res.policy.evidence || {};
+  const segs = (res.deepfake && res.deepfake.segments) || [];
+  const hot = segs.filter((s) => s.score >= 0.90);
+  const hotText = hot.length ? `${hot[0].start.toFixed(0)}–${hot[hot.length - 1].end.toFixed(0)}s` : "part of the call";
+  $("callout").innerHTML = `
+    <div class="callout">
+      <b>The aggregate hides the hijack.</b><br>
+      Voice identity <b>passed</b> (<span class="num">${(ev.similarity ?? 0).toFixed(3)}</span> vs 0.53).
+      The whole-call deepfake score was <span class="num">${(ev.deepfake_score ?? 0).toFixed(3)}</span> — verdict
+      “<b>${ev.deepfake_verdict}</b>”. An aggregate-only policy would have <b>approved this call</b>.<br>
+      The \(${hotText}\) segment scored <span class="num">${(ev.max_segment ?? 0).toFixed(3)}</span>, so the
+      transaction is held. <b>We act on the worst 4 seconds, not the average.</b>
+    </div>`;
+}
+
+async function run(id) {
+  const s = SCENARIOS[id];
+  reset(s);
+  const my = runId;
+
+  if (s.kind === "stream") {
+    const t0 = performance.now();
+    for (let i = 0; i < s.windows.length; i++) {
+      const w = s.windows[i];
+      const due = t0 + w.start * 1000;
+      await sleep(Math.max(0, due - performance.now()));
+      if (my !== runId) return;
+      $("winCount").textContent = `window ${i + 1} of ${s.windows.length}`;
+      const res = await verifyWindow(w.src, i, my);
+      if (my !== runId) return;
+      renderWindow(i, w, res);
+    }
+  } else {
+    const w = s.windows[0];
+    $("winCount").textContent = "whole-call pass";
+    const res = await verifyWindow(w.src, 0, my);
+    if (my !== runId) return;
+    renderWindow(0, w, res);
+    if (id === "subtle") renderSubtleCallout(res);
+  }
+
+  if (my !== runId) return;
+  if (worstPolicy) renderDecision(worstPolicy, false);
+  $("winCount").textContent = "complete";
+}
+
+document.querySelectorAll("[data-run]").forEach((b) => {
+  b.addEventListener("click", () => run(b.dataset.run));
+});
+
+$("audio").addEventListener("timeupdate", () => {
+  const audio = $("audio"), head = $("tlHead");
+  if (!head || !audio.duration) return;
+  head.style.left = Math.max(0, Math.min(100, audio.currentTime / audio.duration * 100)) + "%";
+});
+
+async function handshake() {
+  const box = $("handshakeBox");
+  runId++; // cancel any in-flight call rendering
+  $("turns").innerHTML = "";
+  $("callout").innerHTML = "";
+  $("decision").innerHTML = "";
+  $("tlTrack").innerHTML = "";
+  $("callTitle").textContent = "Agent-to-agent handshake";
+  $("winCount").textContent = "attestation";
+  const audio = $("audio");
+  audio.pause();
+  audio.removeAttribute("src");
+  audio.load();
+  box.innerHTML = '<div class="muted" style="margin-top:10px">Requesting bank-agent attestation…</div>';
+  try {
+    const a = await (await fetch("/api/attest")).json();
+    if (!a || a.error) {
+      box.innerHTML = `<div class="refuse">Attestation failed: ${(a && a.error && a.error.message) || "speaker not enrolled"}</div>`;
+      return;
+    }
+    setBadge("amber", "HANDSHAKE", "verifying the bank agent's live voice…");
+    const res = await verifyWindow("/audio/chunks/genuine_0.wav", -1, runId);
+    const policy = res.policy;
+    const h = await (await fetch("/api/handshake", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ challenge: a.challenge, operation_id: res.operation_id }),
+    })).json();
+
+    const bank = `<div class="card"><h4>Bank agent → you</h4>
+      <div class="v"><b>${a.speaker.speaker_id}</b><br>${a.speaker.samples} enrollment sample(s)<br>${a.fingerprint}<br>
+      verified live: ${(policy.evidence.similarity ?? 0).toFixed(3)} similarity · ${policy.evidence.deepfake_verdict} ${(policy.evidence.deepfake_score ?? 0).toFixed(3)}</div></div>`;
+    const you = h.mutual
+      ? `<div class="card"><h4>Your agent → bank</h4>
+         <div class="v">session token<br><b>${h.session_token}</b><br>challenge ${a.challenge.slice(0, 12)}…<br>expires ${h.expires_in}s</div></div>`
+      : `<div class="card"><h4>Your agent → bank</h4><div class="v">refused: ${h.error || "no fresh proceed verdict"}</div></div>`;
+
+    box.innerHTML = `<div class="cards">${bank}${you}</div>` +
+      (h.mutual
+        ? `<div class="trust">✓ MUTUAL AGENT TRUST ESTABLISHED</div><div class="muted" style="margin-top:6px">The server issued this only because its own record held a fresh <b>proceed</b> verdict for this challenge.</div>`
+        : `<div class="refuse">Handshake refused — the server holds no fresh proceed verdict.</div>`);
+
+    if (h.mutual) {
+      setBadge("green", "✓ MUTUAL TRUST", "bank agent verified by you · your agent attested to the bank");
+      $("decision").innerHTML = `<b class="ok">Mutual agent trust established.</b>
+        <div class="reason">The bank agent's live voice matched the enrolled agent, and the server issued a session attestation for your agent.</div>
+        <div class="meta">Single-use handshake, expires in ${h.expires_in}s. Trust was issued only because the server held a fresh <b>proceed</b> verdict.</div>`;
+    } else {
+      setBadge("amber", "HANDSHAKE REFUSED", h.error || "no fresh proceed verdict");
+      $("decision").innerHTML = `<b class="warnc">Handshake refused.</b>
+        <div class="reason">${h.error || "The server holds no fresh proceed verdict for this challenge."}</div>`;
+    }
+  } catch (e) {
+    box.innerHTML = `<div class="refuse">Handshake error: ${e.message}</div>`;
+  }
+}
+$("handshakeBtn").addEventListener("click", handshake);
+
+refreshStatus();
+setInterval(refreshStatus, 30000);
 </script>
 </body>
 </html>
