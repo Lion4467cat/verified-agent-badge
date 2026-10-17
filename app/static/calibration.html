@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UNCLONE — Calibration</title>
+<style>
+  :root { --bg:#0b1220; --panel:#101a2c; --ink:#e8eefc; --mut:#8fa3c8; --green:#19c37d;
+          --red:#ef4b5d; --amber:#f5b544; --blue:#5b9cff; --line:#20304d; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:18px 28px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:20px; margin:0; font-weight:700; }
+  header p { color:var(--mut); font-size:12.5px; margin:6px 0 0; }
+  main { max-width:1080px; margin:0 auto; padding:20px 24px 40px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-bottom:20px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .card h3 { margin:0 0 8px; font-size:11px; letter-spacing:.7px; text-transform:uppercase; color:var(--mut); }
+  .card .v { font-size:22px; font-weight:750; }
+  .card .src { font-size:11.5px; color:var(--mut); margin-top:6px; line-height:1.5; }
+  .tag { display:inline-block; font-size:9.5px; font-weight:750; letter-spacing:.5px; padding:2px 7px;
+         border-radius:999px; border:1px solid; margin-left:6px; vertical-align:2px; }
+  .tag.vendored { color:var(--blue); border-color:#2f4f80; background:#14264a; }
+  .tag.tuned { color:var(--amber); border-color:#6b521f; background:#2a2110; }
+  .card, .panelbox { position:relative; }
+  h2 { font-size:14px; margin:22px 0 12px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th { text-align:left; font-size:10.5px; letter-spacing:.6px; text-transform:uppercase; color:var(--mut); padding:8px 6px; border-bottom:1px solid var(--line); }
+  td { padding:9px 6px; border-bottom:1px solid #182742; vertical-align:top; }
+  .ok { color:var(--green); font-weight:700; } .bad { color:var(--red); font-weight:700; }
+  .mut { color:var(--mut); font-size:12px; line-height:1.6; }
+  .strip { display:flex; gap:2px; height:16px; border-radius:5px; overflow:hidden; margin-top:6px; border:1px solid var(--line); }
+  .strip span { flex:1; }
+  .g { background:#1f7a4d; } .r { background:#c73647; } .n { background:#4a3a12; }
+  .warn { border:1px solid #6b521f; background:#2a2110; color:#ffd88a; border-radius:12px; padding:14px 16px; font-size:12.5px; line-height:1.6; margin-top:20px; }
+  a { color:var(--blue); }
+</style>
+</head>
+<body>
+<header>
+  <h1>UNCLONE — Calibration</h1>
+  <p>Where every threshold came from, what was measured, and what is still assumed. Raw version: <a href="/docs/CALIBRATION.md">CALIBRATION.md</a></p>
+</header>
+<main>
+
+  <div class="grid">
+    <div class="card"><h3>Vendor match threshold</h3><div class="v">0.53<span class="tag vendored">VENDORED</span></div>
+      <div class="src">DetectifAI's own published match threshold, read back from its response field. Not ours to tune — auto-approval just needs margin above it.</div></div>
+    <div class="card"><h3>Auto-approve margin</h3><div class="v">0.75<span class="tag tuned">TUNED</span></div>
+      <div class="src">Vendor + 0.22. Chosen so staged genuine runs (0.81–0.99) always clear it and a phone-line same-speaker (0.813) still proceeds. Thin identity never auto-approves.</div></div>
+    <div class="card"><h3>Segment-hold line</h3><div class="v">0.90<span class="tag tuned">TUNED</span></div>
+      <div class="src">Tuned on the staged subtle hijack: aggregate "real" (0.337) with hot segments ≥ 0.99. Lower would hold clean calls; higher would miss the hijack.</div></div>
+    <div class="card"><h3>Forensics artifact line</h3><div class="v">0.85<span class="tag tuned">TUNED</span></div>
+      <div class="src">Pure digital silence scores 1.0; real room-tone recordings ≤ 0.51. Above 0.85, audio cannot be an acoustic capture — escalation evidence only, never proof of fraud.</div></div>
+  </div>
+
+  <h2>The labelled segments behind the segment-hold line (n = 22)</h2>
+  <div class="card">
+    <table>
+      <tr><th>Class</th><th>Segments</th><th>Deepfake score range</th><th>Crossed the 0.90 hold?</th></tr>
+      <tr><td>Genuine (team-recorded)</td><td>8</td><td>0.001 – 0.011</td><td class="ok">no</td></tr>
+      <tr><td>TTS clone</td><td>6</td><td class="bad">0.999 – 1.000</td><td class="bad">yes → held</td></tr>
+      <tr><td>Pitch-warped genuine</td><td>5</td><td>0.001 – 0.021</td><td class="ok">no</td></tr>
+      <tr><td>Digital silence</td><td>3</td><td>— (upstream 422)</td><td>— fails closed to step-up</td></tr>
+    </table>
+    <div class="strip"><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="n"></span><span class="n"></span><span class="n"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span></div>
+    <p class="mut" style="margin-top:10px">Genuine-vs-clone separation is <b>complete</b>: max genuine 0.021 vs min clone 0.999. Any threshold between 0.1 and 0.9 classifies all 22 identically — which is why 0.90 (not the vendor's 0.62 utterance line) is safe for the per-segment rule.</p>
+  </div>
+
+  <h2>What the deployed build shows when a judge runs it</h2>
+  <div class="card">
+    <table>
+      <tr><th>Try</th><th>Outcome</th><th>Why</th></tr>
+      <tr><td>Genuine call</td><td class="ok">proceed</td><td>3 windows, every segment real</td></tr>
+      <tr><td>Mid-call hijack</td><td class="bad">hold</td><td>similarity 0.134 « 0.53</td></tr>
+      <tr><td>Subtle hijack</td><td class="bad">hold</td><td>worst-4s rule: segment 0.999 while aggregate said "real"</td></tr>
+      <tr><td>Silent line</td><td>step-up</td><td>fail-closed on unverifiable input</td></tr>
+      <tr><td>Re-sent identical window</td><td class="bad">hold</td><td>capture-and-replay rule (content identity)</td></tr>
+      <tr><td>Digital render</td><td>step-up</td><td>forensics artifact ≥ 0.85: no room tone</td></tr>
+    </table>
+  </div>
+
+  <div class="warn">
+    <b>Honest caveat:</b> n = 22 is a small, single-speaker, single-generator sample — voice diversity is nil. The genuine/clone gap is wide enough that the operating point is safe on this data, but <b>FAR/FRR against unseen voices and a second TTS engine is still open</b> (~19 fresh calls × 50 credits). That run is the declared P1 item and the last code-side mark in the audit.
+  </div>
+
+</main>
+</body>
+</html>

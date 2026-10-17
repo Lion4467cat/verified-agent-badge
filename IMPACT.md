@@ -17,7 +17,8 @@ annual loss prevented
 | D. Detection rate (worst-4s hold) | **~80 %** | [ASSUMPTION until calibrated] the segment rule catches the hijack class; see calibration note |
 | E. Intervention rate (customer confirms in-app) | **70 %** | [ASSUMPTION] step-up conversion for a legit-flagged prompt |
 
-**Annual prevented loss per bank ≈ A × B × C × D × E ≈ $49.9 M **(arithmetic in §2)**
+**Annual prevented loss per bank ≈ A × B × C × D × E ≈ $66 M**
+(1.56 M × 1.33 % = 20,748 incidents; × $5,700 ≈ $118 M exposure; × 80 % detection ≈ $94.6 M; × 70 % intervention ≈ **$66.2 M**)
 **Per prevented incident ≈ $5,700 × 70 % ≈ $3,990.**
 
 ## Precision at deployment prevalence — the number the deck was missing

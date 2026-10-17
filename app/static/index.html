@@ -139,7 +139,7 @@
 
   <div class="banner">
     <b>The registered problem (Rule 3.7): customer gets a call “from the bank” about a flagged payment and must decide in real time whether the caller is the real agent.</b>
-    <span>Day 1 registered this user + problem; Day 2 deepens the product. Named controls that fail today: caller ID (spoofable), KYC questions (leak to the caller), “we never ask for X” (cloned agent doesn't need to ask). Evidence: FTC $1.25B 2024 fraud losses; UK APP ~£149M with voice cloning rising; each incident ≈ $5.7k median loss — the impact model behind these numbers is <a href="/docs/IMPACT.md" target="_blank" rel="noopener">IMPACT.md</a>, the threshold provenance is <a href="/docs/CALIBRATION.md" target="_blank" rel="noopener">CALIBRATION.md</a>, the buyer/pilot answer is <a href="/docs/SCALE.md" target="_blank" rel="noopener">SCALE.md</a>.</span>
+    <span>Day 1 registered this user + problem; Day 2 deepens the product. Named controls that fail today: caller ID (spoofable), KYC questions (leak to the caller), “we never ask for X” (cloned agent doesn't need to ask). Evidence: FTC $1.25B 2024 fraud losses; UK APP ~£149M with voice cloning rising; each incident ≈ $5.7k median loss — the impact model behind these numbers is <a href="/impact.html" target="_blank" rel="noopener">Impact</a>, the threshold provenance is <a href="/calibration.html" target="_blank" rel="noopener">Calibration</a>, and the buyer/pilot answer is <a href="/scale.html" target="_blank" rel="noopener">Scale & Viability</a> — each also readable as raw markdown (IMPACT / CALIBRATION / SCALE .md) under <code>/docs/</code>.</span>
     <span class="tag">L3 telephony = future work</span>
   </div>
 
@@ -156,7 +156,7 @@
         <span class="muted">no decision yet — this object is what the agent acts on</span></div>
 
       <h2 style="margin-top:14px">🎙 Live — your voice (unseen audio)</h2>
-      <button class="primary" id="enrollBtn">1 · Enrol my voice <span class="hint">10s recorded in your browser — becomes the reference speaker</span></button>
+      <button class="primary" id="enrollBtn">1 · Enrol my voice <span class="hint">20s recorded in your browser — becomes the reference speaker</span></button>
       <button class="primary" id="liveBtn">2 · Verify me now <span class="hint">6s window, never on disk, live DetectifAI call</span></button>
       <button class="warn" id="discrimBtn">3 · Discrimination test <span class="hint">an impostor clip against YOUR enrolment — must be held</span></button>
       <button class="ghost" id="uploadBtn">📎 Fallback · upload a clip <span class="hint">if the microphone is blocked or absent</span></button>
@@ -670,8 +670,8 @@ async function doEnroll() {
   const box = $("liveStatus"), btn = $("enrollBtn");
   btn.disabled = true;
   try {
-    box.innerHTML = '<div class="recdot">● recording — speak normally for 12s…</div>';
-    const wav = await recordToWav(12, (s) => {
+    box.innerHTML = '<div class="recdot">● recording — speak normally for 20s (DetectifAI needs ≥15s after decoding)…</div>';
+    const wav = await recordToWav(20, (s) => {
       box.innerHTML = `<div class="recdot">● recording… ${s}s left</div>`;
     });
     box.innerHTML = "<div>Uploading enrolment…</div>";

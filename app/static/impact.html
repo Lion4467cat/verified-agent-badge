@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UNCLONE — Impact</title>
+<style>
+  :root { --bg:#0b1220; --panel:#101a2c; --ink:#e8eefc; --mut:#8fa3c8; --green:#19c37d;
+          --red:#ef4b5d; --amber:#f5b544; --blue:#5b9cff; --line:#20304d; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:18px 28px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:20px; margin:0; font-weight:700; }
+  header p { color:var(--mut); font-size:12.5px; margin:6px 0 0; }
+  main { max-width:1080px; margin:0 auto; padding:20px 24px 40px; }
+  .hero { background:linear-gradient(135deg,#123d2c,#0f2b20); border:1px solid #1f6b4c;
+          border-radius:16px; padding:26px; text-align:center; margin-bottom:20px; }
+  .hero .big { font-size:46px; font-weight:800; color:var(--green); letter-spacing:.5px; }
+  .hero .caption { color:#9fe8cd; font-size:13px; margin-top:6px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; margin-bottom:20px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .card h3 { margin:0 0 8px; font-size:11px; letter-spacing:.7px; text-transform:uppercase; color:var(--mut); }
+  .card .v { font-size:24px; font-weight:750; }
+  .card .src { font-size:11px; color:var(--mut); margin-top:6px; line-height:1.5; }
+  .tag { display:inline-block; font-size:9.5px; font-weight:750; letter-spacing:.5px; padding:2px 7px;
+         border-radius:999px; border:1px solid; margin-left:6px; vertical-align:2px; }
+  .tag.assumed { color:var(--amber); border-color:#6b521f; background:#2a2110; }
+  .tag.sourced { color:var(--green); border-color:#1f6b4c; background:#0f2b20; }
+  .funnel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:20px; }
+  .funnel h2 { font-size:14px; margin:0 0 14px; }
+  .fstep { display:flex; align-items:center; gap:14px; margin:8px 0; }
+  .fstep .lbl { width:290px; font-size:12.5px; color:#c7d5ef; flex:none; }
+  .fstep .bar { height:26px; border-radius:7px; background:linear-gradient(90deg,#173a2c,#1b4635);
+                display:flex; align-items:center; padding:0 10px; font-size:12px; font-weight:700;
+                color:#9fe8cd; white-space:nowrap; min-width:60px; }
+  .fstep .note { font-size:11px; color:var(--mut); }
+  .split { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:820px) { .split { grid-template-columns:1fr; } }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  td { padding:8px 6px; border-bottom:1px solid #182742; vertical-align:top; }
+  td:first-child { color:#c7d5ef; }
+  td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+  .ok { color:var(--green); font-weight:700; } .bad { color:var(--red); font-weight:700; }
+  .mut { color:var(--mut); font-size:11.5px; line-height:1.55; }
+  a { color:var(--blue); }
+</style>
+</head>
+<body>
+<header>
+  <h1>UNCLONE — Impact model</h1>
+  <p>Every number is visible: sourced where sourced, flagged <span class="tag assumed">ASSUMED</span> where assumed. Raw version: <a href="/docs/IMPACT.md">IMPACT.md</a></p>
+</header>
+<main>
+
+  <div class="hero">
+    <div class="big">≈ $66 M / year</div>
+    <div class="caption">prevented loss per mid-size bank &nbsp;·&nbsp; the arithmetic chain is below, every factor in it is a card</div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><h3>A · high-risk calls</h3><div class="v">1.56 M<span class="tag assumed">ASSUMED</span></div>
+      <div class="src">30,000 above-limit flagged calls/week × 52. The flagged:total ratio and the intervention window are the load-bearing parts.</div></div>
+    <div class="card"><h3>B · voice-fraud incidence</h3><div class="v">1.33 %<span class="tag sourced">SOURCED</span></div>
+      <div class="src">Among flagged calls. UK 2024 APP losses ≈ £149 M with a rising voice-cloning share; FTC: $1.25 B reported 2024.</div></div>
+    <div class="card"><h3>C · avg loss / incident</h3><div class="v">$5,700<span class="tag sourced">SOURCED</span></div>
+      <div class="src">FTC 2024 median-class loss for imposter scams ($1.25 B total, 2025 release).</div></div>
+    <div class="card"><h3>D · detection rate</h3><div class="v">80 %<span class="tag assumed">ASSUMED</span></div>
+      <div class="src">The worst-4s rule catches the hijack class. Becomes measured once the second-TTS calibration runs — see <a href="/docs/CALIBRATION.md">CALIBRATION.md</a>.</div></div>
+    <div class="card"><h3>E · intervention rate</h3><div class="v">70 %<span class="tag assumed">ASSUMED</span></div>
+      <div class="src">Step-up conversion: customer confirms in the app instead of proceeding on the call.</div></div>
+  </div>
+
+  <div class="funnel">
+    <h2>How $118 M of exposure becomes $66 M prevented</h2>
+    <div class="fstep"><span class="lbl">Incidents reaching a real fraud attempt</span><div class="bar" style="width:100%">20,748 incidents/yr</div><span class="note">1.56 M × 1.33 %</span></div>
+    <div class="fstep"><span class="lbl">Total exposure if nothing works</span><div class="bar" style="width:92%">$118 M</div><span class="note">× $5,700 each</span></div>
+    <div class="fstep"><span class="lbl">Caught by the worst-4s hold (D)</span><div class="bar" style="width:74%">$94.6 M</div><span class="note">× 80 % detection</span></div>
+    <div class="fstep"><span class="lbl">Actually stopped by step-up (E)</span><div class="bar" style="width:56%">$66.2 M</div><span class="note">× 70 % intervention</span></div>
+  </div>
+
+  <div class="split">
+    <div class="card">
+      <h3>Precision at deployment prevalence</h3>
+      <table>
+        <tr><td>True alerts (80 % of 20,748)</td><td class="ok">16,598</td></tr>
+        <tr><td>False alerts (1 % FPR × 1.539 M)</td><td class="bad">15,391</td></tr>
+        <tr><td><b>Precision among flagged calls</b></td><td class="ok">52 %</td></tr>
+        <tr><td>False alarms per 1,000 genuine flagged</td><td>9.9</td></tr>
+      </table>
+      <p class="mut" style="margin-top:10px">These calls are <i>already flagged</i> above the account limit — so 52 % precision means ~1 false step-up per real catch, survivable for a fraud team. Cold-call screening of <i>all</i> inbound calls at the same rates would show ≈ 7 % precision — that contrast is the design thesis: <b>screen flagged traffic, not the firehose.</b></p>
+    </div>
+    <div class="card">
+      <h3>Latency — measured, not asserted</h3>
+      <table>
+        <tr><td>p50 per window (deployed)</td><td>0.6–2.6 s</td></tr>
+        <tr><td>p95 per window</td><td>0.9–3.5 s</td></tr>
+        <tr><td>Intervention point in the flow</td><td>payment authorisation, after the call</td></tr>
+        <tr><td>Decision inside the window?</td><td class="ok">yes — sub-3s/window</td></tr>
+      </table>
+      <p class="mut" style="margin-top:10px">Honest framing: we prove sub-3s decisions per 6s window across a call. Real-time blocking <i>mid-conversation</i> is the L3 telephony build — declared future work, not implied.</p>
+      <p class="mut" style="margin-top:8px">Cost side: ≈ 150 credits ≈ $0.45 per analysed flagged call (measure) vs $5–15 for a human review — <span class="tag assumed">$/credit ASSUMED</span>.</p>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>
