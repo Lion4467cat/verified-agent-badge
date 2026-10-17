@@ -325,7 +325,12 @@ async def verify(
         _fresh_used += 1
         idem = None  # omit the key: upstream must do the work and charge for it
     else:
-        idem = "verify-" + hashlib.sha256(data).hexdigest()[:32]
+        # Key on file + speaker + mode: the same staged clip legitimately gets
+        # verified against different speakers (bank_agent_1 vs a judge's live
+        # enrolment), and the vendor rejects a reused key with different params.
+        idem = "verify-" + hashlib.sha256(
+            f"{speaker_id}|{detect_deepfake}|".encode() + data
+        ).hexdigest()[:32]
 
     started = time.perf_counter()
     try:
