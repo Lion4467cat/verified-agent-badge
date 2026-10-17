@@ -19,6 +19,7 @@ import os
 import pathlib
 import secrets
 import time
+from collections import deque
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -28,6 +29,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.policy import PUBLIC as POLICY_PUBLIC, decide, worst
+from app.forensics import analyse as forensics_analyse, fingerprint as forensics_fingerprint
 
 BASE_DIR = pathlib.Path(__file__).resolve().parent.parent  # unclone/
 API_BASE = "https://platform.detectif.ai/v1"
@@ -37,6 +39,16 @@ MODEL_DEEPFAKE = {"name": "aletheia", "version": "2db8deca47bf"}
 
 ATTEST_TTL_SECONDS = 300
 VERDICT_TTL_SECONDS = 900
+
+# Credit guard (SPEC G9): the plan is 50 credits/operation, so a fresh run is
+# a real spend. Cap fresh (non-idempotent) calls per process and fail closed to
+# the free idempotent path rather than draining the account mid-demo.
+FRESH_CAP = 12
+MAX_UPLOAD_BYTES = 8 * 1024 * 1024
+MAX_TXNS = 64
+
+_fresh_used = 0
+_LATENCY_MS: deque[float] = deque(maxlen=300)
 
 # Ephemeral per-process secret: session tokens are demo-lifetime artefacts.
 SESSION_SECRET = os.environ.get("SESSION_SECRET") or secrets.token_hex(32)
@@ -72,6 +84,76 @@ def _error_payload(code: str, message: str, error_type: str = "upstream_error") 
 _VERDICTS: dict[str, dict] = {}
 _CHALLENGES: dict[str, float] = {}
 
+# The transaction object — the thing a decision actually acts on.
+_TXNS: dict[str, dict] = {}
+# Per-call content ledger for capture-and-replay detection (keyed txn:perceptual).
+_REPLAYS: dict[str, dict] = {}
+# Cross-call exact-content ledger: surfaced as freshness metadata, never as a verdict.
+_SEEN: dict[str, int] = {}
+
+# One vocabulary end to end: the transaction state IS the policy action, so
+# there is no translation layer to drift out of step (the audit's "three owners
+# for one policy" failure). Only the *effect* is named separately.
+ACTION_BY_STATE = {
+    "proceed": {"type": "payment_released", "agent": "call_continues"},
+    "step_up": {"type": "step_up_prompt", "agent": "call_paused"},
+    "hold": {"type": "payment_blocked", "agent": "call_terminated"},
+}
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def _apply_decision(txn: dict, action: str, window_index: int, evidence: dict) -> dict:
+    """Apply one window verdict to the transaction — server-side worst-wins.
+
+    This is the action the rubric asks for: the decision is no longer text in a
+    div, it mutates a state machine that the API exposes and that the caller can
+    observe. ``worst()`` (previously imported and unused) is what owns the
+    aggregation, so one place decides how windows combine.
+    """
+    txn["decisions"].append({"action": action, "evidence": evidence})
+    txn["windows"].append({"index": window_index, "action": action, "at": _now()})
+
+    previous = txn["state"]
+    # hold is absorbing: worst-wins over every decision seen so far.
+    txn["state"] = worst(txn["decisions"])["action"]
+
+    if txn["state"] != previous:
+        # Copy: never alias the module-level dict, or two transactions share one
+        # action object and overwrite each other's timestamp.
+        txn["action"] = dict(ACTION_BY_STATE[txn["state"]])
+        txn["action"]["at"] = _now()
+        txn["history"].append(
+            {"from": previous, "to": txn["state"], "at": txn["action"]["at"],
+             "action": txn["action"]["type"], "window": window_index}
+        )
+    return txn
+
+
+def _new_txn(body: dict) -> dict:
+    if len(_TXNS) >= MAX_TXNS:
+        # Bounded: a demo page must not grow an unbounded in-memory store.
+        for key in list(_TXNS)[: len(_TXNS) // 4]:
+            _TXNS.pop(key, None)
+    txn_id = "txn_" + secrets.token_hex(5)
+    txn = {
+        "id": txn_id,
+        "amount": body.get("amount", 86499),
+        "currency": body.get("currency", "INR"),
+        "payee": body.get("payee", "Flipkart"),
+        "card": body.get("card", "4321"),
+        "state": "pending",
+        "action": None,
+        "windows": [],
+        "decisions": [],
+        "history": [{"from": None, "to": "pending", "at": _now()}],
+        "created_at": _now(),
+    }
+    _TXNS[txn_id] = txn
+    return txn
+
 
 def _prune(store: dict, ttl: int) -> None:
     now = time.time()
@@ -98,15 +180,35 @@ def _fingerprint(speaker: dict) -> str:
     return "sha256:" + hashlib.sha256(raw.encode()).hexdigest()[:20]
 
 
+def _pct(values: list[float], p: float) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    idx = min(len(ordered) - 1, max(0, int(round(p / 100 * (len(ordered) - 1)))))
+    return round(ordered[idx], 1)
+
+
 @app.get("/api/status")
 async def status():
     """Small status endpoint the page polls: key present? credits? health?"""
+    lat = list(_LATENCY_MS)
     out = {
         "api_key_present": bool(API_KEY),
         "api_ok": False,
         "credits": None,
         "credits_available": None,
         "policy": POLICY_PUBLIC,
+        # Measured time-to-decision (SPEC B.4.3): p50/p95 over real calls.
+        "latency_ms": {
+            "p50": _pct(lat, 50),
+            "p95": _pct(lat, 95),
+            "samples": len(lat),
+        },
+        "fresh": {
+            "used": _fresh_used,
+            "cap": FRESH_CAP,
+            "remaining": max(0, FRESH_CAP - _fresh_used),
+        },
     }
     if not API_KEY:
         out["message"] = "DETECTIF_API_KEY not set — add ~/.detectif_key or export the env var."
@@ -159,12 +261,18 @@ async def verify(
     file: UploadFile = File(...),
     speaker_id: str = Form("bank_agent_1"),
     detect_deepfake: bool = Form(True),
+    txn_id: str = Form(""),
+    window_index: int = Form(0),
+    fresh: bool = Form(False),
 ):
     """Verify one window of the call.
 
     Returns the DetectifAI payload verbatim plus a server-side ``policy``
-    object. The page renders the policy; it never derives its own decision.
+    object and, when ``txn_id`` is supplied, the mutated transaction. The page
+    renders what the server decided; it never derives its own decision.
     """
+    global _fresh_used
+
     if not API_KEY:
         raise HTTPException(status_code=503, detail="DETECTIF_API_KEY not set")
 
@@ -173,8 +281,53 @@ async def verify(
         payload = _error_payload("empty_file", "No audio was uploaded.")
         payload["policy"] = decide(payload)
         return JSONResponse(status_code=400, content=payload)
+    if len(data) > MAX_UPLOAD_BYTES:
+        payload = _error_payload(
+            "payload_too_large", f"Audio exceeds {MAX_UPLOAD_BYTES // 1048576} MB."
+        )
+        payload["policy"] = decide(payload)
+        return JSONResponse(status_code=413, content=payload)
 
-    idem = "verify-" + hashlib.sha256(data).hexdigest()[:32]
+    # Second signal: provenance features + content identity (SPEC B.1.6).
+    fx = forensics_analyse(data)
+    fp = forensics_fingerprint(data)
+    fx["fingerprint"] = fp["perceptual"][:12]
+    seen_before = _SEEN.get(fp["exact"], 0)
+    _SEEN[fp["exact"]] = seen_before + 1
+    fx["freshness"] = {
+        "seen_before": seen_before,
+        "label": "first check" if seen_before == 0 else f"seen {seen_before}x before",
+    }
+    if txn_id:
+        key = f"{txn_id}:{fp['perceptual']}"
+        record = _REPLAYS.get(key)
+        if record:
+            record["count"] += 1
+            fx["replay"] = {
+                "detected": True,
+                "matched": "perceptual",
+                "count": record["count"],
+            }
+        else:
+            _REPLAYS[key] = {"count": 1, "ts": time.time()}
+
+    # Credit guard: a fresh run costs 50, an idempotent replay costs 0.
+    if fresh:
+        if _fresh_used >= FRESH_CAP:
+            payload = _error_payload(
+                "fresh_budget_exhausted",
+                f"{FRESH_CAP} fresh runs used this session \u2014 replaying idempotently "
+                "instead (costs 0).",
+                "budget_error",
+            )
+            payload["policy"] = decide(payload)
+            return JSONResponse(status_code=429, content=payload)
+        _fresh_used += 1
+        idem = None  # omit the key: upstream must do the work and charge for it
+    else:
+        idem = "verify-" + hashlib.sha256(data).hexdigest()[:32]
+
+    started = time.perf_counter()
     try:
         async with httpx.AsyncClient(timeout=120) as client:
             response = await client.post(
@@ -190,8 +343,16 @@ async def verify(
         payload = _error_payload(
             "upstream_unreachable", f"Could not reach DetectifAI: {exc}", "network_error"
         )
+        payload["forensics"] = fx
         payload["policy"] = decide(payload)
+        if txn_id and txn_id in _TXNS:
+            payload["transaction"] = _apply_decision(
+                _TXNS[txn_id], payload["policy"]["action"], window_index, payload["policy"]["evidence"]
+            )
         return JSONResponse(status_code=502, content=payload)
+
+    elapsed_ms = (time.perf_counter() - started) * 1000
+    _LATENCY_MS.append(elapsed_ms)
 
     try:
         payload = response.json()
@@ -201,8 +362,19 @@ async def verify(
             response.text[:200] or "Upstream returned a non-JSON body.",
         )
 
+    payload["forensics"] = fx
+    payload["latency_ms"] = round(elapsed_ms, 1)
     payload["policy"] = decide(payload)
     payload["upstream_status"] = response.status_code
+
+    # Fail-closed on every path: an upstream error is still *evidence* — it must
+    # escalate the transaction (step_up/hold), never leave it pending.
+    if txn_id:
+        txn = _TXNS.get(txn_id)
+        if txn is not None:
+            payload["transaction"] = _apply_decision(
+                txn, payload["policy"]["action"], window_index, payload["policy"]["evidence"]
+            )
 
     if response.status_code < 300:
         operation_id = payload.get("operation_id")
@@ -213,6 +385,21 @@ async def verify(
     if response.status_code in (429, 503):
         payload["retry_after"] = response.headers.get("Retry-After", "5")
     return JSONResponse(status_code=response.status_code, content=payload)
+
+
+@app.post("/api/transactions")
+async def create_transaction(body: dict):
+    """Open a transaction. Its state is what the verifier agent acts on."""
+    return {"transaction": _new_txn(body or {})}
+
+
+@app.get("/api/transactions/{txn_id}")
+async def get_transaction(txn_id: str):
+    """Read the transaction state an agent's decisions produced (SPEC B.2.3)."""
+    txn = _TXNS.get(txn_id)
+    if txn is None:
+        raise HTTPException(status_code=404, detail="unknown transaction")
+    return {"transaction": txn}
 
 
 @app.get("/api/attest")

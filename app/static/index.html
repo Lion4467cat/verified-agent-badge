@@ -108,6 +108,20 @@
         border:1px solid var(--line); border-radius:8px; padding:10px; max-height:240px; overflow:auto; margin:6px 0 0; }
   footer { padding:14px 28px; color:#5f729a; font-size:11.5px; border-top:1px solid var(--line); margin-top:12px; }
   .muted { color:var(--mut); }
+  .txnstate { margin:-4px 0 14px; padding:10px 11px; border:1px solid var(--line); border-radius:9px;
+              background:#0d1523; font-size:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .txnstate .st { font-weight:750; font-size:10.5px; letter-spacing:.5px; padding:3px 9px;
+                  border-radius:999px; border:1px solid; }
+  .txnstate .st.pending { color:var(--mut); border-color:var(--line); background:#141f33; }
+  .txnstate .st.proceed { color:var(--green); border-color:#1f6b4c; background:#0f2b20; }
+  .txnstate .st.step_up { color:var(--amber); border-color:#6b521f; background:#2a2110; }
+  .txnstate .st.hold { color:var(--red); border-color:#7a2b35; background:#2a1216; }
+  .txnstate a { color:var(--blue); font-size:11px; }
+  .fresh { display:flex; gap:9px; align-items:flex-start; font-size:11.5px; color:var(--mut);
+           margin:10px 0 2px; cursor:pointer; line-height:1.45; }
+  .fresh input { margin-top:2px; accent-color:var(--green); }
+  .recdot { color:var(--red); font-weight:750; }
+  .micro { font-size:11px; color:#5f729a; margin-top:7px; line-height:1.5; }
   @media (max-width: 900px) { main { grid-template-columns: 1fr; } .hs .cards { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -128,12 +142,26 @@
   <section>
     <div class="panel">
       <h2>Flagged transaction</h2>
-      <div class="txn" style="margin-bottom:12px">
+      <div class="txn" id="txnCard" style="margin-bottom:12px">
         <b>Card ending 4321 · Flipkart</b>
         <span class="amt">₹86,499</span>
         <span>· above your ₹75,000 limit</span>
       </div>
-      <h2 style="margin-top:4px">Demo calls</h2>
+      <div id="txnState" class="txnstate"><span class="st pending">PENDING</span>
+        <span class="muted">no decision yet — this object is what the agent acts on</span></div>
+
+      <h2 style="margin-top:14px">🎙 Live — your voice (unseen audio)</h2>
+      <button class="primary" id="enrollBtn">1 · Enrol my voice <span class="hint">10s recorded in your browser — becomes the reference speaker</span></button>
+      <button class="primary" id="liveBtn">2 · Verify me now <span class="hint">6s window, never on disk, live DetectifAI call</span></button>
+      <button class="warn" id="discrimBtn">3 · Discrimination test <span class="hint">an impostor clip against YOUR enrolment — must be held</span></button>
+      <button class="ghost" id="uploadBtn">📎 Fallback · upload a clip <span class="hint">if the microphone is blocked or absent</span></button>
+      <input type="file" id="fileInput" accept="audio/*" hidden>
+      <div class="hs" id="liveStatus"></div>
+
+      <h2 style="margin-top:14px">Demo calls</h2>
+      <label class="fresh"><input type="checkbox" id="freshToggle">
+        <span>Fresh run — omit the idempotency key so DetectifAI does the work and charges 50 credits
+        <span class="muted">(default: free idempotent replay)</span></span></label>
       <button class="primary" data-run="genuine">📞 Call 1 · Genuine agent
         <span class="hint">3 live windows · green throughout · transaction proceeds</span></button>
       <button class="warn" data-run="hijack">🚨 Call 2 · Mid-call hijack
@@ -148,16 +176,9 @@
     </div>
 
     <div class="panel policy">
-      <h2>Decision policy (server-side)</h2>
-      <table>
-        <tr><td>Any segment ≥ 0.90</td><td class="r">HOLD</td></tr>
-        <tr><td>Voice similarity &lt; 0.53</td><td class="r">HOLD</td></tr>
-        <tr><td>Deepfake verdict <b>fake</b></td><td class="r">HOLD</td></tr>
-        <tr><td>Similarity 0.53–0.75</td><td class="a">STEP UP</td></tr>
-        <tr><td>Not sure / partial / 422 / 5xx</td><td class="a">STEP UP</td></tr>
-        <tr><td>≥ 0.75 + real + no hot segment</td><td class="g">PROCEED</td></tr>
-      </table>
-      <div class="caption" style="margin-top:9px">Auto-approval needs margin above the vendor's 0.53 match threshold. No error path returns <b>proceed</b>.</div>
+      <h2>Decision policy (server-side, served by <code>/api/status</code>)</h2>
+      <table><tbody id="policyBody"></tbody></table>
+      <div class="caption" style="margin-top:9px" id="policyNote"></div>
     </div>
   </section>
 
@@ -241,7 +262,10 @@ async function refreshStatus() {
     }
     dot.className = "dot " + (s.api_ok ? "ok" : "bad");
     const credits = s.credits_available == null ? "credits ?" : `${s.credits_available} credits`;
-    $("apiStatus").innerHTML = `<i class="dot ${s.api_ok ? "ok" : "bad"}"></i>DetectifAI ${s.api_ok ? "reachable" : "unreachable"} · ${credits} · eidos + aletheia`;
+    const lat = s.latency_ms && s.latency_ms.p50 ? ` · p50 ${s.latency_ms.p50}ms` : "";
+    const fresh = s.fresh ? ` · fresh ${s.fresh.used}/${s.fresh.cap}` : "";
+    $("apiStatus").innerHTML = `<i class="dot ${s.api_ok ? "ok" : "bad"}"></i>DetectifAI ${s.api_ok ? "reachable" : "unreachable"} · ${credits}${lat}${fresh} · eidos + aletheia`;
+    renderPolicy(s.policy);
   } catch (e) {
     $("apiStatus").innerHTML = '<i class="dot bad"></i>status unavailable';
   }
@@ -286,21 +310,35 @@ function reset(s) {
   audio.play().catch(() => {});
 }
 
-async function verifyWindow(src, i, my) {
+async function verifyWindow(src, i, my, opts = {}) {
   if (i >= 0) markBlock(i, "checking");
+  const speaker = opts.speaker || "bank_agent_1";
   let attempt = 0;
   while (true) {
-    const blob = await (await fetch(src)).blob();
+    let blob = opts.blob;
+    if (!blob) blob = await (await fetch(src)).blob();
     const fd = new FormData();
-    fd.append("file", blob, src.split("/").pop());
-    fd.append("speaker_id", "bank_agent_1");
+    fd.append("file", blob, opts.filename || (src ? src.split("/").pop() : "audio.wav"));
+    fd.append("speaker_id", speaker);
     fd.append("detect_deepfake", "true");
+    if (opts.txn) {
+      fd.append("txn_id", opts.txn);
+      fd.append("window_index", String(Math.max(0, i)));
+    }
+    if ($("freshToggle") && $("freshToggle").checked) fd.append("fresh", "true");
     let res, body;
     try {
       res = await fetch("/api/verify", { method: "POST", body: fd });
       body = await res.json();
     } catch (e) {
       body = { error: { code: "network_error" }, policy: { action: "step_up", severity: "amber", reason: "Network error — fail closed.", evidence: {} } };
+    }
+    // Fresh budget spent: drop to the free idempotent path instead of spinning.
+    // Checked before the 429/503 retry branch so it never reads as "upstream busy".
+    if (body.error && body.error.code === "fresh_budget_exhausted") {
+      if ($("freshToggle")) $("freshToggle").checked = false;
+      delete body.error;
+      continue;
     }
     if ((res && (res.status === 503 || res.status === 429)) && attempt < 2) {
       const wait = Math.min(8, Number(body.retry_after || 5));
@@ -311,6 +349,7 @@ async function verifyWindow(src, i, my) {
       continue;
     }
     if (!body.policy) body.policy = { action: "step_up", severity: "amber", reason: "No policy returned — fail closed.", evidence: {} };
+    if (body.transaction) renderTxn(body.transaction);
     return body;
   }
 }
@@ -349,6 +388,7 @@ function renderWindow(i, w, res) {
       ${ev.max_segment != null ? bar("worst segment", ev.max_segment, 0.90, true) : ""}
       ${segStrip(res.deepfake && res.deepfake.segments)}
       <div class="caption">segment strip: ${res.deepfake && res.deepfake.segments ? res.deepfake.segments.length : 0} scored windows (4s @ 2s stride) · red ≥ 0.62 · decisive ≥ 0.90</div>
+      ${forensicsRow(res.forensics)}
     </div>
     <div class="decision" style="border-top:none;padding-top:8px;font-size:12px">
       <span class="reason">${p.reason}</span>
@@ -392,6 +432,9 @@ async function run(id) {
   const s = SCENARIOS[id];
   reset(s);
   const my = runId;
+  // One call = one transaction, opened before any window is judged.
+  txnId = await newTxn();
+  liveTxn = null;
 
   if (s.kind === "stream") {
     const t0 = performance.now();
@@ -401,14 +444,14 @@ async function run(id) {
       await sleep(Math.max(0, due - performance.now()));
       if (my !== runId) return;
       $("winCount").textContent = `window ${i + 1} of ${s.windows.length}`;
-      const res = await verifyWindow(w.src, i, my);
+      const res = await verifyWindow(w.src, i, my, { txn: txnId });
       if (my !== runId) return;
       renderWindow(i, w, res);
     }
   } else {
     const w = s.windows[0];
     $("winCount").textContent = "whole-call pass";
-    const res = await verifyWindow(w.src, 0, my);
+    const res = await verifyWindow(w.src, 0, my, { txn: txnId });
     if (my !== runId) return;
     renderWindow(0, w, res);
     if (id === "subtle") renderSubtleCallout(res);
@@ -469,12 +512,14 @@ async function handshake() {
 
     box.innerHTML = `<div class="cards">${bank}${you}</div>` +
       (h.mutual
-        ? `<div class="trust">✓ MUTUAL AGENT TRUST ESTABLISHED</div><div class="muted" style="margin-top:6px">The server issued this only because its own record held a fresh <b>proceed</b> verdict for this challenge.</div>`
+        ? `<div class="trust">✓ ATTESTED — SESSION ISSUED</div><div class="muted" style="margin-top:6px">Issued only because the server's own record held a fresh <b>proceed</b> verdict for this challenge. For the demo both roles run in one process; a real deployment splits them across two services.</div>`
         : `<div class="refuse">Handshake refused — the server holds no fresh proceed verdict.</div>`);
+      // Honesty fix (SPEC G11): both roles live in one process for this demo,
+      // so do not claim two-party mutual trust we cannot evidence.
 
     if (h.mutual) {
-      setBadge("green", "✓ MUTUAL TRUST", "bank agent verified by you · your agent attested to the bank");
-      $("decision").innerHTML = `<b class="ok">Mutual agent trust established.</b>
+      setBadge("green", "✓ ATTESTED", "bank agent verified by your agent · session issued");
+      $("decision").innerHTML = `<b class="ok">Attestation issued.</b>
         <div class="reason">The bank agent's live voice matched the enrolled agent, and the server issued a session attestation for your agent.</div>
         <div class="meta">Single-use handshake, expires in ${h.expires_in}s. Trust was issued only because the server held a fresh <b>proceed</b> verdict.</div>`;
     } else {
@@ -487,6 +532,217 @@ async function handshake() {
   }
 }
 $("handshakeBtn").addEventListener("click", handshake);
+
+/* ── Transaction object: what a decision actually acts on (SPEC B.2.3) ── */
+let txnId = null, liveTxn = null;
+
+async function newTxn() {
+  try {
+    const r = await (await fetch("/api/transactions", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: 86499, payee: "Flipkart", card: "4321" }),
+    })).json();
+    txnId = r.transaction.id;
+    renderTxn(r.transaction);
+    return txnId;
+  } catch (e) { return null; }
+}
+
+async function ensureLiveTxn() {
+  if (liveTxn) return liveTxn;
+  liveTxn = await newTxn();
+  return liveTxn;
+}
+
+function renderTxn(t) {
+  const el = $("txnState");
+  if (!el || !t) return;
+  const label = { pending: "PENDING", proceed: "PROCEEDS", step_up: "STEP UP", hold: "HELD" }[t.state] || t.state;
+  const act = t.action
+    ? `${t.action.type.replace(/_/g, " ")} · agent ${t.action.agent.replace(/_/g, " ")}`
+    : "no action yet";
+  el.innerHTML = `<span class="st ${t.state}">${label}</span><span>${act}</span>` +
+    `<a href="/api/transactions/${t.id}" target="_blank" rel="noopener">${t.id} ↗</a>`;
+  // The action itself: a held transaction terminates the call. The agent stops
+  // talking — this is not text in a div, it changes what the page does.
+  if (t.action && t.action.agent === "call_terminated") {
+    const a = $("audio");
+    if (a && !a.paused) a.pause();
+    $("callTitle").textContent = "Call terminated by the verifier agent";
+  }
+}
+
+/* ── Policy table: driven by the server, one owner per threshold ── */
+function renderPolicy(P) {
+  if (!P || !$("policyBody")) return;
+  const rows = [
+    [`Any 4s segment ≥ ${P.segment_hold}`, "HOLD", "r"],
+    [`Captured audio re-sent in the same call`, "HOLD", "r"],
+    [`Voice similarity &lt; ${P.vendor_match_threshold}`, "HOLD", "r"],
+    [`Deepfake verdict <b>fake</b>`, "HOLD", "r"],
+    [`Similarity ${P.vendor_match_threshold}–${P.auto_approve_similarity}`, "STEP UP", "a"],
+    [`Forensics artifact ≥ ${P.forensics_artifact_high ?? "0.85"}`, "STEP UP", "a"],
+    [`Not sure / partial / 422 / 5xx`, "STEP UP", "a"],
+    [`≥ ${P.auto_approve_similarity} + real + no hot segment`, "PROCEED", "g"],
+  ];
+  $("policyBody").innerHTML = rows
+    .map(([t, a, c]) => `<tr><td>${t}</td><td class="${c}">${a}</td></tr>`).join("");
+  $("policyNote").innerHTML = `Auto-approval needs margin above the vendor's ${P.vendor_match_threshold} ` +
+    `match threshold. No error path returns <b>proceed</b>. Every number is served by <code>/api/status</code>.`;
+}
+
+/* ── Second signal, rendered (SPEC B.1.6) ── */
+function forensicsRow(f) {
+  if (!f) return "";
+  if (!f.available)
+    return `<div class="caption">second signal · skipped (${f.reason || "not decodable PCM"}) — the deepfake leg stays the required evidence</div>`;
+  const hi = typeof f.artifact_score === "number" && f.artifact_score >= 0.85;
+  const pct = typeof f.artifact_score === "number" ? (f.artifact_score * 100).toFixed(0) : 0;
+  const meta = [f.freshness ? f.freshness.label : "", (f.flags || []).join(", ")].filter(Boolean).join(" · ");
+  return `<div class="vizrow"><span>forensics artifact</span><div class="track">` +
+    `<div class="fill ${hi ? "r" : "g"}" style="width:${pct}%"></div><i class="thr" style="left:85%"></i></div>` +
+    `<b class="${hi ? "r" : "g"}">${typeof f.artifact_score === "number" ? f.artifact_score.toFixed(3) : "—"}</b></div>` +
+    `<div class="caption">second signal (stdlib) · ${meta || "clean"}${f.replay ? ` · <b class="bad">REPLAY DETECTED</b>` : ""}</div>`;
+}
+
+/* ── L1: capture in the browser, upload as PCM WAV (never on disk) ── */
+let judgeSpeaker = null;
+
+function encodeWav(buffer) {
+  const ch = 1, rate = buffer.sampleRate, src = buffer.getChannelData(0), len = src.length;
+  const bytes = 44 + len * 2, ab = new ArrayBuffer(bytes), v = new DataView(ab);
+  const w = (o, s) => { for (let k = 0; k < s.length; k++) v.setUint8(o + k, s.charCodeAt(k)); };
+  w(0, "RIFF"); v.setUint32(4, bytes - 8, true); w(8, "WAVE"); w(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, ch, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * ch * 2, true);
+  v.setUint16(32, ch * 2, true); v.setUint16(34, 16, true);
+  w(36, "data"); v.setUint32(40, len * 2, true);
+  let o = 44;
+  for (let k = 0; k < len; k++, o += 2) {
+    const s = Math.max(-1, Math.min(1, src[k]));
+    v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+  }
+  return new Blob([ab], { type: "audio/wav" });
+}
+
+async function recordToWav(seconds, tick) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
+    throw new Error("This browser exposes no microphone API — use Upload a clip.");
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) {
+    throw new Error(`Microphone blocked (${e.name || "permission denied"}) — allow it, or use Upload a clip below.`);
+  }
+  const mr = new MediaRecorder(stream), parts = [];
+  mr.ondataavailable = (e) => e.data.size && parts.push(e.data);
+  const stopped = new Promise((r) => (mr.onstop = r));
+  mr.start();
+  for (let s = seconds; s > 0; s--) { if (tick) tick(s); await sleep(1000); }
+  mr.stop();
+  await stopped;
+  stream.getTracks().forEach((t) => t.stop());
+  const buf = await new Blob(parts, { type: mr.mimeType }).arrayBuffer();
+  const ac = new (window.AudioContext || window.webkitAudioContext)();
+  let decoded;
+  try { decoded = await ac.decodeAudioData(buf); }
+  catch (e) { try { ac.close(); } catch (_) {} throw new Error("Could not decode the recording — please retry."); }
+  const wav = encodeWav(decoded);
+  try { ac.close(); } catch (_) {}
+  return wav;
+}
+
+function beginLive(title, sub) {
+  runId++;
+  worstPolicy = null;
+  $("turns").innerHTML = ""; $("decision").innerHTML = ""; $("callout").innerHTML = "";
+  $("winCount").textContent = ""; $("callTitle").textContent = title;
+  $("tlTrack").innerHTML = "";
+  setBadge("amber", "RECORDING", sub);
+  const a = $("audio"); a.pause();
+}
+
+async function doEnroll() {
+  const box = $("liveStatus"), btn = $("enrollBtn");
+  btn.disabled = true;
+  try {
+    box.innerHTML = '<div class="recdot">● recording — speak normally for 12s…</div>';
+    const wav = await recordToWav(12, (s) => {
+      box.innerHTML = `<div class="recdot">● recording… ${s}s left</div>`;
+    });
+    box.innerHTML = "<div>Uploading enrolment…</div>";
+    const fd = new FormData();
+    fd.append("file", wav, "judge_voice.wav");
+    fd.append("speaker_id", "judge_voice");
+    const r = await (await fetch("/api/enroll", { method: "POST", body: fd })).json();
+    if (r && r.error) throw new Error(r.error.message || "enrolment rejected");
+    judgeSpeaker = "judge_voice";
+    box.innerHTML = `<div class="ok">✓ Enrolled <b>judge_voice</b> — ${r.samples ?? "?"} sample(s)</div>` +
+      `<div class="micro">Your voice is the reference now. Step 2 checks you against it; step 3 checks an impostor against it.</div>`;
+  } catch (e) {
+    box.innerHTML = `<div class="warnc">${e.message}</div><div class="micro">Fallback: use <b>Upload a clip</b> below.</div>`;
+  } finally { btn.disabled = false; }
+}
+
+async function doLiveMic() {
+  const box = $("liveStatus"), btn = $("liveBtn");
+  if (!judgeSpeaker) {
+    box.innerHTML = '<div class="warnc">Step 1 first — enrol your voice so there is a reference to match against.</div>';
+    return;
+  }
+  btn.disabled = true;
+  try {
+    beginLive("Live window · your microphone", "capturing 6s of unseen audio…");
+    const wav = await recordToWav(6, (s) => { $("winCount").textContent = `recording ${s}s left`; });
+    const txn = await ensureLiveTxn();
+    $("winCount").textContent = "verifying live window";
+    const res = await verifyWindow(null, 0, runId, { blob: wav, filename: "live.wav", speaker: judgeSpeaker, txn });
+    renderWindow(0, { label: "live 6s window", start: 0, end: 6 }, res);
+    renderDecision(res.policy, false);
+    box.innerHTML = `<div class="micro">${Math.round(wav.size / 1024)} KB of PCM WAV captured moments ago — this audio did not exist on disk before you pressed the button.</div>`;
+  } catch (e) {
+    beginLive("Live window unavailable", "");
+    setBadge("amber", "MIC UNAVAILABLE", e.message);
+    box.innerHTML = `<div class="warnc">${e.message}</div>`;
+  } finally { btn.disabled = false; }
+}
+
+async function doDiscrim() {
+  const box = $("liveStatus");
+  if (!judgeSpeaker) {
+    box.innerHTML = '<div class="warnc">Step 1 first — enrol your voice, then this test has a reference to fail against.</div>';
+    return;
+  }
+  beginLive("Discrimination test · impostor vs your enrolment", "checking a stranger's clip against your reference…");
+  const txn = await ensureLiveTxn();
+  const res = await verifyWindow("/audio/chunks/attacker_0.mp3", 0, runId, { speaker: judgeSpeaker, txn });
+  renderWindow(0, { label: "impostor clip vs your enrolment", start: 0, end: 6 }, res);
+  renderDecision(res.policy, false);
+  box.innerHTML = res.policy.action === "hold"
+    ? '<div class="ok">✓ Discriminates: the impostor clip was <b>held</b> against your voice — the live path is not a rubber stamp.</div>'
+    : `<div class="warnc">Unexpected outcome: <b>${res.policy.action}</b>. The live path must be able to reject.</div>`;
+}
+
+async function doUpload(f) {
+  if (!f) return;
+  beginLive("Uploaded clip · unseen input", "verifying a judge-supplied file…");
+  const txn = await ensureLiveTxn();
+  const res = await verifyWindow(null, 0, runId, {
+    blob: f, filename: f.name, speaker: judgeSpeaker || "bank_agent_1", txn,
+  });
+  renderWindow(0, { label: `uploaded · ${f.name.slice(0, 24)}`, start: 0, end: 6 }, res);
+  renderDecision(res.policy, false);
+  $("liveStatus").innerHTML = `<div class="micro">Judge-supplied file: ${Math.round(f.size / 1024)} KB, checked against ${judgeSpeaker || "bank_agent_1"}.</div>`;
+}
+
+$("enrollBtn").addEventListener("click", doEnroll);
+$("liveBtn").addEventListener("click", doLiveMic);
+$("discrimBtn").addEventListener("click", doDiscrim);
+$("uploadBtn").addEventListener("click", () => $("fileInput").click());
+$("fileInput").addEventListener("change", (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  doUpload(f);
+});
 
 refreshStatus();
 setInterval(refreshStatus, 30000);

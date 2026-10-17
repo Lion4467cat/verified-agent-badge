@@ -24,6 +24,11 @@ AUTO_APPROVE_SIM = 0.75
 # A single 4-second window this synthetic is decisive on its own.
 SEGMENT_HOLD = 0.90
 
+# Second signal (app.forensics): provenance-quality only. A high score means
+# "clean digital render, no acoustic capture" — escalation evidence, never proof
+# of fraud on its own, so it can reach step_up and no further.
+FORENSICS_ARTIFACT_HIGH = 0.85
+
 ACTION_RANK = {"proceed": 0, "step_up": 1, "hold": 2}
 
 PUBLIC = {
@@ -31,6 +36,9 @@ PUBLIC = {
     "auto_approve_similarity": AUTO_APPROVE_SIM,
     "deepfake_threshold": VENDOR_DEEPFAKE,
     "segment_hold": SEGMENT_HOLD,
+    "forensics_artifact_high": FORENSICS_ARTIFACT_HIGH,
+    "second_signal": "forensics (stdlib) — escalation only: reaches step_up, never hold",
+    "replay_rule": "identical content re-sent within one call -> hold",
     "actions": {
         "proceed": "Voice matches with margin and the whole call is real.",
         "step_up": "Evidence is thin, partial or unavailable: move to in-app confirmation.",
@@ -120,7 +128,26 @@ def decide(payload: dict) -> dict:
             "score": max_segment,
         }
 
-    # 2. Identity failed: the speaker is not the enrolled agent.
+    # 2. Capture-and-replay: identical audio already verified in this call.
+    #    Record the agent once, resend it every call — identity would match and
+    #    the aggregate would look clean, so this has to be checked on content.
+    forensics = payload.get("forensics")
+    if not isinstance(forensics, dict):
+        forensics = {}
+    replay = forensics.get("replay")
+    if isinstance(replay, dict) and replay.get("detected"):
+        matched = replay.get("matched") or "content"
+        count = replay.get("count") or 2
+        return _out(
+            "hold",
+            "red",
+            f"Capture-and-replay: identical audio already verified {count} times "
+            f"in this call ({matched} match). A recorded window cannot be re-sent. "
+            "Transaction held.",
+            evidence,
+        )
+
+    # 3. Identity failed: the speaker is not the enrolled agent.
     if decision != "match" or similarity < sim_threshold:
         return _out(
             "hold",
@@ -190,6 +217,21 @@ def decide(payload: dict) -> dict:
             evidence,
         )
 
+    # 7. Provenance forensics: escalation only. Above the threshold the audio
+    #    looks like a digital render rather than an acoustic capture — enough to
+    #    refuse auto-approval, never enough to convict.
+    artifact = forensics.get("artifact_score")
+    if artifact is not None and artifact >= FORENSICS_ARTIFACT_HIGH:
+        flags = ", ".join(forensics.get("flags") or []) or "digital render"
+        return _out(
+            "step_up",
+            "amber",
+            f"Provenance forensics: audio reads as a digital render "
+            f"(artifact {artifact:.3f} >= {FORENSICS_ARTIFACT_HIGH:.2f}: {flags}). "
+            "Second signal refuses auto-approval — step up.",
+            evidence,
+        )
+
     return _out(
         "proceed",
         "green",
@@ -243,6 +285,38 @@ if __name__ == "__main__":
         ("silent", {"error": {"type": "unprocessable_audio",
                               "code": "silent_audio"}}, "step_up"),
         ("empty", {}, "step_up"),
+        # --- second signal -------------------------------------------------
+        # Replay of genuine-sounding audio: identity would match, content betrays it.
+        ("replay", {
+            "result": {"similarity": 0.98735, "decision": "match", "threshold": 0.53},
+            "deepfake": {"verdict": "real", "score": 0.00821, "threshold": 0.62,
+                         "segments": [{"start": 0, "end": 4, "score": 0.0015}]},
+            "forensics": {"available": True, "artifact_score": 0.21,
+                          "replay": {"detected": True, "matched": "perceptual",
+                                     "count": 3}},
+        }, "hold"),
+        # Digital render with a clean verdict: escalate, do not convict.
+        ("digital render", {
+            "result": {"similarity": 0.98735, "decision": "match", "threshold": 0.53},
+            "deepfake": {"verdict": "real", "score": 0.00821, "threshold": 0.62,
+                         "segments": [{"start": 0, "end": 4, "score": 0.0015}]},
+            "forensics": {"available": True, "artifact_score": 0.97,
+                          "flags": ["digital_silence_61%", "no_room_tone_0.0000"]},
+        }, "step_up"),
+        # Below threshold: forensics must not disturb a clean genuine verdict.
+        ("forensics calm", {
+            "result": {"similarity": 0.98735, "decision": "match", "threshold": 0.53},
+            "deepfake": {"verdict": "real", "score": 0.00821, "threshold": 0.62,
+                         "segments": [{"start": 0, "end": 4, "score": 0.0015}]},
+            "forensics": {"available": True, "artifact_score": 0.505},
+        }, "proceed"),
+        # Unavailable forensics is not missing *required* evidence: no change.
+        ("forensics n/a", {
+            "result": {"similarity": 0.98735, "decision": "match", "threshold": 0.53},
+            "deepfake": {"verdict": "real", "score": 0.00821, "threshold": 0.62,
+                         "segments": [{"start": 0, "end": 4, "score": 0.0015}]},
+            "forensics": {"available": False, "reason": "not_decodable_pcm_wav"},
+        }, "proceed"),
     ]
 
     for name, case, expected in cases:
