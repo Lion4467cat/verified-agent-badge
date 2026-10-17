@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 WORKDIR /srv
 COPY requirements.txt .
-COPY IMPACT.md CALIBRATION.md SCALE.md ./
+COPY IMPACT.md CALIBRATION.md SCALE.md UNCLONE-day2-deck.pptx ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 ENV PORT=8000
