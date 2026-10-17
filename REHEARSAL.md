@@ -50,7 +50,7 @@ from the repo laptop (uvicorn must be running there; the demo controller knows h
 
 **Presenter 1: 3:40–4:10 — Edge case + one number (click Silent line)**
 > "No evidence should never mean no decision. A silent line is treated as *unverifiable*, and we fail **closed** — the badge steps up, never approves. Same for API failures and re-sent audio: the system has a ladder and every rung is safe." Then one number:
-> "At realistic prevalence we screen *flagged* traffic, precision ≈ 52% — one false step-up per real catch — at $0.87 per caught fraud, against an $800 median consumer loss per imposter-scam incident (FTC 2024 Data Book)."
+> "At realistic prevalence we screen *flagged* traffic, precision ≈ 52% — one false step-up per real catch — at about $42 per fraud caught ($60 per prevented), a ≈13× return against the $800 median consumer loss per imposter-scam incident (FTC 2024 Data Book)."
 
 **Presenter 2: 4:10–4:30 — close on the architecture, hand to questions**
 > "DetectifAI is the engine. The product is the policy around it — the action ladder, the replay and forensics signals, the audited transaction — which is what a bank buys and what our Impact, Calibration and Scale pages in the top banner evidence. Questions?"

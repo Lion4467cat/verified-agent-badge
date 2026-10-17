@@ -53,7 +53,9 @@ code-change that could buy the last point is the calibration expansion, not new 
 
 ## 3. What is deliberately not claimed
 
-- **The microphone path has never executed in a real browser session.** Enrol/verify/
+- **Erratum (2026-10-17):** the "per catch ≈ $0.87" figure quoted in the score table above divided the per-call cost by alert precision; the correct denominator is every analysed flagged call → ≈ $42 per caught fraud, ≈ 13× return. Forward-facing artefacts (deck, SCALE, in-product pages) now carry the corrected figure.
+
+**The microphone path has never executed in a real browser session.** Enrol/verify/
   discriminate are coded and the fallback covers failure, but no human pressed "Enrol
   my voice" in front of this agent. First live test happens at rehearsal.
 - **Calibration n=22 is tiny.** See [CALIBRATION.md](CALIBRATION.md); the second-engine
