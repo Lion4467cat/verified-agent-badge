@@ -106,6 +106,7 @@
   summary { cursor:pointer; font-size:11px; color:#5f729a; }
   pre { white-space:pre-wrap; word-break:break-word; font-size:10.5px; color:#9fb2d4; background:#0b1220;
         border:1px solid var(--line); border-radius:8px; padding:10px; max-height:240px; overflow:auto; margin:6px 0 0; }
+  .banner a { color:var(--blue); }
   footer { padding:14px 28px; color:#5f729a; font-size:11.5px; border-top:1px solid var(--line); margin-top:12px; }
   .muted { color:var(--mut); }
   .txnstate { margin:-4px 0 14px; padding:10px 11px; border:1px solid var(--line); border-radius:9px;
@@ -130,13 +131,17 @@
   <h1>🏦 UNCLONE — Verified-Agent Badge</h1>
   <span class="sub">user-side agent verifies the bank's agent · every window is a live DetectifAI call</span>
   <span class="status" id="apiStatus"><i class="dot"></i>checking API…</span>
-</header>
+</header>  <div class="banner">
+    <b>Day 1 judge asked: where is the training dataset?</b>
+    <span>We don't train a model. We enroll <b>15–60s of the bank's own agent voice</b> against pretrained speaker + deepfake models — no corpus, no cold start.</span>
+    <span class="tag">Day 1 feedback → shipped</span>
+  </div>
 
-<div class="banner">
-  <b>Day 1 judge asked: where is the training dataset?</b>
-  <span>We don't train a model. We enroll <b>15–60s of the bank's own agent voice</b> against pretrained speaker + deepfake models — no corpus, no cold start.</span>
-  <span class="tag">Day 1 feedback → shipped</span>
-</div>
+  <div class="banner">
+    <b>The registered problem (Rule 3.7): customer gets a call “from the bank” about a flagged payment and must decide in real time whether the caller is the real agent.</b>
+    <span>Day 1 registered this user + problem; Day 2 deepens the product. Named controls that fail today: caller ID (spoofable), KYC questions (leak to the caller), “we never ask for X” (cloned agent doesn't need to ask). Evidence: FTC $1.25B 2024 fraud losses; UK APP ~£149M with voice cloning rising; each incident ≈ $5.7k median loss — the impact model behind these numbers is <a href="/docs/IMPACT.md" target="_blank" rel="noopener">IMPACT.md</a>, the threshold provenance is <a href="/docs/CALIBRATION.md" target="_blank" rel="noopener">CALIBRATION.md</a>, the buyer/pilot answer is <a href="/docs/SCALE.md" target="_blank" rel="noopener">SCALE.md</a>.</span>
+    <span class="tag">L3 telephony = future work</span>
+  </div>
 
 <main>
   <section>

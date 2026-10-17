@@ -480,6 +480,10 @@ async def handshake(body: dict):
     }
 
 
+# Human-review artefacts (impact model, calibration, scale) are served as static
+# docs so a judge can open them straight from the product's banner links.
+app.mount("/docs", StaticFiles(directory=str(BASE_DIR), html=True), name="docs")
+
 # Static page + local audio assets (agent lines, attacker clones, windows).
 # mkdir first: git does not track empty dirs, so a fresh clone may lack them.
 for _dir in (BASE_DIR / "app" / "audio", BASE_DIR / "app" / "static"):
