@@ -439,9 +439,10 @@ async function handshake() {
   $("callTitle").textContent = "Agent-to-agent handshake";
   $("winCount").textContent = "attestation";
   const audio = $("audio");
+  // Pause and rewind but keep the source attached: detaching src mid-request
+  // aborts the in-flight media fetch and logs a console error the judges would see.
   audio.pause();
-  audio.removeAttribute("src");
-  audio.load();
+  audio.currentTime = 0;
   box.innerHTML = '<div class="muted" style="margin-top:10px">Requesting bank-agent attestation…</div>';
   try {
     const a = await (await fetch("/api/attest")).json();
