@@ -43,10 +43,10 @@ from the repo laptop (uvicorn must be running there; the demo controller knows h
 
 **Presenter 2: 3:00–3:40 — THE LIVE MOMENT (the piece every judge remembers)**
 > "Two of our judges have asked — everything so far is staged clips. So here's unseen audio: one of us, right now." Press **Enrol my voice**; speak for the full 20 s — read something natural, don't whisper, don't fill the pause with silence.
-> Press **Verify me now**. Expect the badge to go **amber STEP-UP**, and say the line before the judges can ask:
-> "Your voice isn't enrolled as the bank's agent, so we *won't* auto-approve — that's the margin rule protecting the customer."
+> Press **Verify me now**. The check is against **your own enrolment** (created in step 1), so on a clean mic expect **green PROCEED**; a noisy room may give amber — narrate whichever appears honestly:
+> "We enrolled my voice as its own reference — exactly how the bank enrols its agent. It recognises me."
 > Press **Discrimination test** (the impostor clip against your own enrolment). Expect **red HOLD**:
-> "And the same pipeline that knows who I am will refuse a stranger — that's discrimination, not a rubber stamp."
+> "A stranger's clip against my enrolment is held. Accept-me + reject-a-stranger in one session is the proof this isn't a rubber stamp."
 
 **Presenter 1: 3:40–4:10 — Edge case + one number (click Silent line)**
 > "No evidence should never mean no decision. A silent line is treated as *unverifiable*, and we fail **closed** — the badge steps up, never approves. Same for API failures and re-sent audio: the system has a ladder and every rung is safe." Then one number:
