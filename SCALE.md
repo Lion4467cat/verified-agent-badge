@@ -35,7 +35,7 @@ Telephony (L3) is the later expansion, cited as future work.
 
 - ≈ 150 credits ≈ **$0.45** per analysed flagged call (measured plan price × our 3-window design).
 - Compare: a human fraud review of a flagged call is $5–15 (assumption).
-- At the 1-in-200 hit rate from [IMPACT.md](IMPACT.md): cost per caught fraud ≈ $0.45 / (52 % precision) ≈ **$0.87**, well under $1 against a ~$5,700 average loss.
+- At the 1-in-200 hit rate from [IMPACT.md](IMPACT.md): cost per caught fraud ≈ $0.45 / (52 % precision) ≈ **$0.87**, well under $1 against an $800 median loss per imposter-scam incident (FTC 2024 Data Book).
 - Cost falls linearly with volume; the verify call is charged per operation, idle is free, so a bank pays only for flagged traffic.
 
 ## Pilot design (one workflow, one metric, one duration, one threshold)

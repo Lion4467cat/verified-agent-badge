@@ -13,7 +13,7 @@ The two thresholds that were *guesses* are no longer:
 
 ## What is measured (n, method, caveat)
 
-**Labelled segments seen so far:** 27 across four generators/transforms and two voices
+**Labelled segments seen so far:** 28 across four generators/transforms and two voices (the table rows below sum to 8+6+5+3+3+2+1 = 28)
 (10 fresh ops spent 2026-10-17 on the second-engine run: credits 950 → 450).
 
 | Class | Segments | Deepfake score range | Crossed the 0.90 hold? |
@@ -37,7 +37,7 @@ The two thresholds that were *guesses* are no longer:
   shape.
 - **What this calibration cannot yet claim:** two voices and two transform families are
   not two TTS *engines* in the ASVspoof sense; FAR/FRR against unseen real speakers is
-  still unmeasured. n=27 is better than n=22, and the honest phrasing stays "tuned and
+  still unmeasured. n=28 is better than n=22, and the honest phrasing stays "tuned and
   transfer-checked within our attack classes" rather than "validated".
 
 ## What the deployed runs show (live evidence, 2026-10-17)

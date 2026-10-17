@@ -11,15 +11,15 @@ annual loss prevented
 
 | Input | Value | Source / status |
 |---|---|---|
-| A. High-risk flagged calls | **1.56 M/yr per bank** | [ASSUMPTION] a mid-size bank: 30k flagged calls/yr × 52 weeks; the *ratio* flagged:total and the intervention window are the load-bearing parts, the absolute scale is an assumption |
-| B. Voice-fraud incidence among flagged | **1.33 %** | downward-trending but material; UK 2024: ~£149M APP losses with a rising voice-cloning share (FTC 2024: $1.25 B, context) |
-| C. Average loss per successful scam | **$5,700** | FTC 2024 median-class loss for imposter scams with $1.25 B total |
+| A. High-risk flagged calls | **1.56 M/yr per bank** | [ASSUMPTION] a mid-size bank: 30k flagged calls **per week** × 52 weeks; the *ratio* flagged:total and the intervention window are the load-bearing parts, the absolute scale is an assumption |
+| B. Voice-fraud incidence among flagged | **1.33 %** | [ASSUMPTION] downward-trending but material; UK Finance reports £450.7 M full-year 2024 APP-fraud losses (impersonation cases down 16 %); FTC reports $2.95 B 2024 imposter-scam losses |
+| C. Average loss per successful scam | **$800** | FTC 2024 Data Book: median loss across reported imposter-scam incidents ($2.95 B total). Median, not mean — bank-wire APP scams skew higher, so this is the conservative anchor |
 | D. Detection rate (worst-4s hold) | **~80 %** | [ASSUMPTION until calibrated] the segment rule catches the hijack class; see calibration note |
 | E. Intervention rate (customer confirms in-app) | **70 %** | [ASSUMPTION] step-up conversion for a legit-flagged prompt |
 
-**Annual prevented loss per bank ≈ A × B × C × D × E ≈ $66 M**
-(1.56 M × 1.33 % = 20,748 incidents; × $5,700 ≈ $118 M exposure; × 80 % detection ≈ $94.6 M; × 70 % intervention ≈ **$66.2 M**)
-**Per prevented incident ≈ $5,700 × 70 % ≈ $3,990.**
+**Annual prevented loss per bank ≈ A × B × C × D × E ≈ $9.3 M**
+(1.56 M × 1.33 % = 20,748 incidents; × $800 ≈ $16.6 M exposure; × 80 % detection ≈ $13.3 M; × 70 % intervention ≈ **$9.3 M**)
+**Per prevented incident ≈ $800 × 70 % ≈ $560.**
 
 ## Precision at deployment prevalence — the number the deck was missing
 
@@ -49,8 +49,7 @@ calls, where the same rates give precision ≈ 7 %.
 
 From `/api/status` latency (server-to-DetectifAI round-trip, real calls):
 
-- **p50 ≈ 0.6–2.6 s per window** (deployed, 3-window call)
-- **p95 ≈ 0.9 s** (deployed, small sample: 3 calls)
+- **p50 ≈ 0.6 s, p95 ≈ 2.6 s per window** (deployed; n = 3 calls × 3 windows, server-to-DetectifAI round trip. p95 ≥ p50 by construction — the earlier draft mislabeled the two values)
 
 The intervention window: the fraud moment is the payment authorisation, which happens
 *after* the call in the workflow we simulate — so a sub-3s-per-window decision is inside
