@@ -176,7 +176,7 @@
       <button class="ghost" data-run="silent">🔇 Edge case · Silent line
         <span class="hint">unverifiable input → fail closed to step-up</span></button>
       <button class="ghost" id="handshakeBtn" style="margin-top:14px">🤝 Agent-to-agent handshake
-        <span class="hint">bank attestation + server-side challenge-response</span></button>
+        <span class="hint">server-issued attestation, wired live in this demo: the server calls our own verify endpoint, then issues a challenge + session token to the "your agent" card</span></button>
       <div class="hs" id="handshakeBox"></div>
     </div>
 
@@ -523,9 +523,9 @@ async function handshake() {
       // so do not claim two-party mutual trust we cannot evidence.
 
     if (h.mutual) {
-      setBadge("green", "✓ ATTESTED", "bank agent verified by your agent · session issued");
+      setBadge("green", "✓ ATTESTED", "server attestation issued · not a cross-service trust proof");
       $("decision").innerHTML = `<b class="ok">Attestation issued.</b>
-        <div class="reason">The bank agent's live voice matched the enrolled agent, and the server issued a session attestation for your agent.</div>
+        <div class="reason">The server attested that the bank agent's recorded voice matched the enrolled agent and issued a session token — usable by your agent's side; this demo does it in-process, not as two services talking.</div>
         <div class="meta">Single-use handshake, expires in ${h.expires_in}s. Trust was issued only because the server held a fresh <b>proceed</b> verdict.</div>`;
     } else {
       setBadge("amber", "HANDSHAKE REFUSED", h.error || "no fresh proceed verdict");
