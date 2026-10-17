@@ -54,17 +54,20 @@
       <div class="src">Pure digital silence scores 1.0; real room-tone recordings ≤ 0.51. Above 0.85, audio cannot be an acoustic capture — escalation evidence only, never proof of fraud.</div></div>
   </div>
 
-  <h2>The labelled segments behind the segment-hold line (n = 22)</h2>
+  <h2>The labelled segments behind the segment-hold line (n = 27, two transform families)</h2>
   <div class="card">
     <table>
       <tr><th>Class</th><th>Segments</th><th>Deepfake score range</th><th>Crossed the 0.90 hold?</th></tr>
       <tr><td>Genuine (team-recorded)</td><td>8</td><td>0.001 – 0.011</td><td class="ok">no</td></tr>
-      <tr><td>TTS clone</td><td>6</td><td class="bad">0.999 – 1.000</td><td class="bad">yes → held</td></tr>
+      <tr><td>TTS clone (engine 1)</td><td>6</td><td class="bad">0.999 – 1.000</td><td class="bad">yes → held</td></tr>
       <tr><td>Pitch-warped genuine</td><td>5</td><td>0.001 – 0.021</td><td class="ok">no</td></tr>
       <tr><td>Digital silence</td><td>3</td><td>— (upstream 422)</td><td>— fails closed to step-up</td></tr>
+      <tr><td><b>Engine-2 pitch-converted TTS</b> (fresh-rate)</td><td>3</td><td class="bad">0.998 – 0.9999</td><td class="bad">yes → held</td></tr>
+      <tr><td>Engine-2 pitch-converted genuine</td><td>2</td><td>0.002 – 0.007</td><td class="ok">no → step-up by margin (0.548 / 0.742)</td></tr>
+      <tr><td><b>Engine-2 telephony-band TTS</b> (300–3400 Hz)</td><td>1</td><td class="bad">0.998</td><td class="bad">yes → held</td></tr>
     </table>
-    <div class="strip"><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="n"></span><span class="n"></span><span class="n"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span></div>
-    <p class="mut" style="margin-top:10px">Genuine-vs-clone separation is <b>complete</b>: max genuine 0.021 vs min clone 0.999. Any threshold between 0.1 and 0.9 classifies all 22 identically — which is why 0.90 (not the vendor's 0.62 utterance line) is safe for the per-segment rule.</p>
+    <div class="strip"><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="n"></span><span class="n"></span><span class="n"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="g"></span><span class="r"></span><span class="r"></span><span class="r"></span><span class="g"></span><span class="r"></span></div>
+    <p class="mut" style="margin-top:10px">Separation <b>transfers to the second transform family</b>: min clone 0.998 vs max genuine 0.021, and the telephony-band render — the realistic attacker — still scored 0.998, so band-limiting makes synthetic artefacts <i>more</i> detectable, not less. The converted-genuine windows matched identity (0.548/0.742) but fell below our 0.75 auto-approve line, so the <b>margin rule</b> correctly refused auto-approval. Second family ≠ a second ASVspoof-class engine, and FAR/FRR vs unseen real speakers is still open — the honest phrasing is “tuned and transfer-checked within our attack classes”, not “validated”.</p>
   </div>
 
   <h2>What the deployed build shows when a judge runs it</h2>
@@ -81,7 +84,7 @@
   </div>
 
   <div class="warn">
-    <b>Honest caveat:</b> n = 22 is a small, single-speaker, single-generator sample — voice diversity is nil. The genuine/clone gap is wide enough that the operating point is safe on this data, but <b>FAR/FRR against unseen voices and a second TTS engine is still open</b> (~19 fresh calls × 50 credits). That run is the declared P1 item and the last code-side mark in the audit.
+    <b>Honest caveat, updated after the second-engine run (10 fresh ops, credits 950 → 450):</b> n = 27 now spans <b>two transform families and two voices</b>, and the complete genuine/clone separation transfers — including through a telephony band-pass. Still not an ASVspoof-class validation: <b>FAR/FRR against unseen real speakers remains open</b>. Phrased everywhere as “tuned and transfer-checked”, not “validated”.
   </div>
 
 </main>

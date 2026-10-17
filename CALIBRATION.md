@@ -13,22 +13,32 @@ The two thresholds that were *guesses* are no longer:
 
 ## What is measured (n, method, caveat)
 
-**Labelled segments seen so far:** 22 (staged calls, 4s each), spanning one genuine
-speaker, one TTS clone, one pitch-scaled voice, and pure silence.
+**Labelled segments seen so far:** 27 across four generators/transforms and two voices
+(10 fresh ops spent 2026-10-17 on the second-engine run: credits 950 → 450).
 
-| Class | Segments | Deepfake score range | Passed 0.90 hold? |
+| Class | Segments | Deepfake score range | Crossed the 0.90 hold? |
 |---|---|---|---|
 | Genuine (team-recorded) | 8 | 0.001–0.011 | no |
-| TTS clone | 6 | 0.999–1.000 | yes |
+| TTS clone (engine 1) | 6 | 0.999–1.000 | yes |
 | Pitch-warped genuine | 5 | 0.001–0.021 | no |
 | Digital silence | 3 | — (422 upstream) | — (fails closed) |
+| **Engine-2 pitch-converted TTS (fresh-rate)** | 3 | 0.998–0.9999 | **yes** |
+| **Engine-2 pitch-converted genuine (modified but untouched-audio class)** | 2 | 0.002–0.007 | no — action step_up by margin (0.548 / 0.742) |
+| **Engine-2 telephony-band (300–3400 Hz) TTS** | 1 | 0.998 | **yes** |
 
-- Genuine-vs-clone separation is complete: 0.021 max vs 0.999 min. A threshold anywhere
-  in 0.1–0.9 produces the same 22/22 classification, which is why 0.90 (not 0.62, the
-  vendor's utterance threshold) is safe for the *segment* rule.
-- **n=22 is a small, single-speaker, single-generator sample.** Voice diversity is nil.
-- **[ASSUMPTION still open]**: FAR/FRR against *unseen* voices and a second TTS engine.
-  Budget price for that experiment is ~19 calls × 50 credits — left as the P1 item.
+- Genuine-vs-clone separation **holds across the second transform family**: min clone
+  score 0.998 vs max genuine 0.021 — the complete separation transfers. The telephony-band
+  render (the realistic attacker: no clean full-band TTS artefacts) still scored 0.998,
+  so if anything the codec makes the synthetic artefacts *more* detectable, not less.
+- **Identity margin behaved as designed, too**: converted-genuine windows scored
+  0.548/0.742 similarity — above vendor-match but below our 0.75 auto-approve line, so
+  they **step up rather than proceed**. The margin rule, not the segment rule, is what
+  correctly refuses auto-approval on a voice that matches the wrong speaker's spectral
+  shape.
+- **What this calibration cannot yet claim:** two voices and two transform families are
+  not two TTS *engines* in the ASVspoof sense; FAR/FRR against unseen real speakers is
+  still unmeasured. n=27 is better than n=22, and the honest phrasing stays "tuned and
+  transfer-checked within our attack classes" rather than "validated".
 
 ## What the deployed runs show (live evidence, 2026-10-17)
 
