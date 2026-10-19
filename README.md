@@ -40,8 +40,7 @@ and the transaction flips to "payment blocked".
 - `Team-39-Gokula-verified-agent-badge.pptx` — combined presentation
   (Day 1 + Day 2) built for this submission.
 - `screenshots/` — slide screenshots of the combined deck.
-- Judge-facing docs: `IMPACT.md`, `CALIBRATION.md`, `SCALE.md`,
-  `REHEARSAL.md`, `SPEC.md`, `AUDIT-day2-v2.md`.
+- Judge-facing docs: `IMPACT.md`, `CALIBRATION.md`, `SCALE.md`, `SPEC.md`.
 
 ## Try it
 
